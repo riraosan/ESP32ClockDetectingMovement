@@ -31,27 +31,30 @@ SOFTWARE.
 #include <Button2.h>
 
 #include <esp32-hal-log.h>
-
+//for WiFi Connecting
 #define HOSTNAME "atom_clock"
 #define AP_NAME "ATOM-G-AP"
-
+//for Clock
 #define TIME_ZONE "JST-9"
 #define NTP_SERVER1 "ntp.nict.jp"
 #define NTP_SERVER2 "ntp.jst.mfeed.ad.jp"
 #define NTP_SERVER3 ""
-
+//for 7seg
 #define CLK 22
 #define DIO 19
-
+//for BME280
 #define SDA 25
 #define SCL 21
-
+//for Light Sleep(not use)
 #define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP 48          /* Time ESP32 will go to sleep (in seconds) */
-
+//for reseting WiFi
 #define BUTTON_PIN 39
+//for PIR Detecting
+#define PIR_SENSOR_PIN 23
 
 Button2 button = Button2(BUTTON_PIN);
+Button2 pir_sensor = Button2(PIR_SENSOR_PIN);
 
 Ticker clocker;
 Ticker sensorChecker;
@@ -212,7 +215,6 @@ void displayOff(void)
 void initBME280(void)
 {
     bme280.setup(SDA, SCL);
-    sensorChecker.attach(60, _checkSensor);
 }
 
 void initLightSleep(void)
@@ -238,9 +240,32 @@ void released(Button2 &btn)
     ESP.restart();
 }
 
+void pirDetected(Button2 &btn)
+{
+    log_d("--- detected.");
+
+    displayOn();
+    _checkSensor();
+}
+
+void pirReleased(Button2 &btn)
+{
+    log_d("released: %d", btn.wasPressedFor());
+
+    showSensor = false;
+    clocker.detach();
+    displayOff();
+}
+
 void initButton(void)
 {
     button.setReleasedHandler(released);
+}
+
+void initPIRSensor(void)
+{
+    pir_sensor.setPressedHandler(pirDetected);
+    pir_sensor.setReleasedHandler(pirReleased);
 }
 
 void setup(void)
@@ -257,30 +282,26 @@ void setup(void)
     initESPUI();
     initBME280();
     initButton();
-
-    showSensor = true;
+    initPIRSensor();
 }
 
 void loop(void)
 {
     STB.handle();
     button.loop();
+    pir_sensor.loop();
 
     if (showSensor)
     {
-        displayOn();
+        clocker.attach_ms(500, _clock);
+        delay(5 * 1000);
         clocker.detach();
-
         printTemperature(bme280.getTemperature());
         delay(2 * 1000);
         printHumidity(bme280.getHumidity());
         delay(2 * 1000);
         printPressure(bme280.getPressure());
         delay(2 * 1000);
-
-        clocker.attach_ms(500, _clock);
-
-        showSensor = false;
     }
 
     yield();
