@@ -1,4 +1,5 @@
-MIT License
+/*
+The MIT License (MIT)
 
 Copyright (c) 2020-2021 riraosan.github.io
 
@@ -19,3 +20,44 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+*/
+
+#pragma once
+
+#include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+
+class BME280Class
+{
+public:
+    BME280Class();
+    ~BME280Class();
+
+    static void sendSensorInfo(void);
+
+    void initBME280HumiditySensing(void);
+    void initBME280WeatherStation(void);
+    void initUnifiedBME280(void);
+
+    float getTemperature(void);
+    float getPressure(void);
+    float getHumidity(void);
+    float getAltitude(float seaLevel);
+    uint32_t getSensorID(void);
+
+    void setup(int sdaPin, int sclPin);
+    void handle(void);
+
+private:
+    Adafruit_BME280 *_bme;
+    Adafruit_Sensor *_pressur;
+    Adafruit_Sensor *_temperature;
+    Adafruit_Sensor *_humidity;
+    uint32_t _sensor_ID;
+};
+
+#if !defined(NO_GLOBAL_INSTANCES) && !defined(NO_GLOBAL_BME280CLASS)
+extern BME280Class bme280;
+#endif
