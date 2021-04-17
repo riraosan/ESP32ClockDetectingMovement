@@ -22,35 +22,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <Arduino.h>
+#define TS_ENABLE_SSL //Don't forget it for ThingSpeak.h!!
 #include <SerialTelnetBridge.h>
-#include <ESPUI.h>
 #include <Ticker.h>
+#include <ESPUI.h>
 #include <TM1637Display.h>
 #include <BME280Class.h>
 #include <Button2.h>
-
+#include <WiFiClientSecure.h>
+#include <ThingSpeak.h>
+#include "secrets.h"
+//For log
 #include <esp32-hal-log.h>
-//for WiFi Connecting
+//For WiFi Connection
 #define HOSTNAME "atom_clock"
 #define AP_NAME "ATOM-G-AP"
-//for Clock
+//For NTP Clock
 #define TIME_ZONE "JST-9"
 #define NTP_SERVER1 "ntp.nict.jp"
 #define NTP_SERVER2 "ntp.jst.mfeed.ad.jp"
 #define NTP_SERVER3 ""
-//for 7seg
+//For 7segLED
 #define CLK 22
 #define DIO 19
-//for BME280
+//For BME280
 #define SDA 25
 #define SCL 21
-//for Light Sleep(not use)
+//For Light Sleep(not use)
 #define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP 48          /* Time ESP32 will go to sleep (in seconds) */
-//for reseting WiFi
+//For resetting WiFi
 #define BUTTON_PIN 39
-//for PIR Detecting
+//For PIR Detection
 #define PIR_SENSOR_PIN 23
 
 Button2 button = Button2(BUTTON_PIN);
@@ -61,100 +64,136 @@ Ticker sensorChecker;
 Ticker tempeChecker;
 Ticker humidChecker;
 Ticker pressChecker;
-Ticker displaySwitcher;
-Ticker sleeper;
 
 TM1637Display display(CLK, DIO);
+
+WiFiClientSecure _client;
 
 uint16_t timeLabelId;
 uint16_t temperatureLabelId;
 uint16_t humidityLabelId;
 uint16_t pressureLabelId;
 
-bool showSensor = false;
+bool showLED = false;
+bool sendData = false;
 
-void _checkSensor(void)
+unsigned long myChannelNumber = SECRET_CH_ID;
+const char *myWriteAPIKey = SECRET_WRITE_APIKEY;
+const char *certificate = SECRET_TS_ROOT_CA;
+
+float temperature;
+float humidity;
+float pressure;
+
+void sendThingSpeakChannel(float temperature, float humidity, float pressure)
 {
-    showSensor = true;
+    ThingSpeak.setField(1, temperature);
+    ThingSpeak.setField(2, humidity);
+    ThingSpeak.setField(3, pressure);
+
+    // write to the ThingSpeak channel
+    int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+    if (code == 200)
+    {
+        log_d("Channel update successful.");
+    }
+    else
+    {
+        log_d("Problem updating channel. HTTP error code %d", code);
+    }
 }
 
-void printTemperature(float temp)
+void printTemperatureLED(float value)
 {
     char buffer[16] = {0};
-    //LED
-    sprintf(buffer, "0x%2.0fC", temp);
+    sprintf(buffer, "0x%2.0fC", value);
 
     display.clear();
     display.showNumberHexEx(strtol(buffer, 0, 16), (0x80 >> 2), false, 3, 1);
+}
 
-    //WebUI
-    sprintf(buffer, "%2.1f℃", temp);
+void printTemperatureESPUI(float value)
+{
+    char buffer[16] = {0};
+
+    sprintf(buffer, "%2.1f℃", value);
     String tempUI(buffer);
     ESPUI.updateControlValue(temperatureLabelId, tempUI);
 }
 
-void printHumidity(float temp)
+void printHumidityLED(float value)
 {
     char buffer[16] = {0};
-    //LED
-    sprintf(buffer, "%2f", temp);
+
+    sprintf(buffer, "%2f", value);
     String humidLed(buffer);
     display.clear();
     display.showNumberDecEx(humidLed.toInt(), (0x80 >> 0), false);
+}
 
-    //WebUI
-    sprintf(buffer, "%2.1f%%", temp);
+void printHumidityESPUI(float value)
+{
+    char buffer[16] = {0};
+
+    sprintf(buffer, "%2.1f%%", value);
     String humidUI(buffer);
     ESPUI.updateControlValue(humidityLabelId, humidUI);
 }
 
-void printPressure(float temp)
+void printPressureLED(float value)
 {
     char buffer[16] = {0};
-    //LED
-    sprintf(buffer, "%4f", temp);
+
+    sprintf(buffer, "%4f", value);
     String pressLed(buffer);
     display.clear();
     display.showNumberDecEx(pressLed.toInt(), (0x80 >> 0), false);
+}
 
-    //WebUI
-    sprintf(buffer, "%2.1fhPa", temp);
+void printPressureESPUI(float value)
+{
+    char buffer[16] = {0};
+
+    sprintf(buffer, "%2.1fhPa", value);
     String pressUI(buffer);
     ESPUI.updateControlValue(pressureLabelId, pressUI);
 }
 
-void _checkTempe(void)
+void _checkTemperature(void)
 {
-    clocker.detach();
-    printTemperature(bme280.getTemperature());
+    float value = bme280.getTemperature();
+
+    printTemperatureESPUI(value);
 }
 
-void _checkHumid(void)
+void _checkHumidity(void)
 {
-    printHumidity(bme280.getHumidity());
+    float value = bme280.getHumidity();
+
+    printHumidityESPUI(value);
 }
 
-void _checkPress(void)
+void _checkPressure(void)
 {
-    printPressure(bme280.getPressure());
+    float value = bme280.getPressure();
+
+    printPressureESPUI(value);
 }
 
-void printTime(void)
+void _checkSensor(void)
+{
+    sendData = true;
+}
+
+String getLEDTime(void)
 {
     time_t t = time(NULL);
     struct tm *tm = localtime(&t);
 
     char buffer[16] = {0};
     sprintf(buffer, "%02d%02d", tm->tm_hour, tm->tm_min);
-    String _time(buffer);
 
-    static uint8_t flag = 0;
-    flag = ~flag;
-
-    if (flag)
-        display.showNumberDecEx(_time.toInt(), (0x80 >> 2), true);
-    else
-        display.showNumberDecEx(_time.toInt(), (0x80 >> 4), true);
+    return String(buffer);
 }
 
 String getTime(void)
@@ -177,12 +216,12 @@ String getTime(void)
 void _clock(void)
 {
     ESPUI.updateControlValue(timeLabelId, getTime());
-    printTime();
 }
 
 void initClock(void)
 {
     configTzTime(TIME_ZONE, NTP_SERVER1, NTP_SERVER2, NTP_SERVER3);
+    clocker.attach_ms(500, _clock);
 }
 
 void initESPUI(void)
@@ -215,6 +254,7 @@ void displayOff(void)
 void initBME280(void)
 {
     bme280.setup(SDA, SCL);
+    sensorChecker.attach(60, _checkSensor);
 }
 
 void initLightSleep(void)
@@ -229,9 +269,9 @@ void connecting(void)
     flag = ~flag;
 
     if (flag)
-        display.showNumberDecEx(8888, (0x80 >> 3), false);
+        display.showNumberDecEx(0, (0x80 >> 3), false);
     else
-        display.showNumberDecEx(8888, (0x80 >> 4), false);
+        display.showNumberDecEx(0, (0x80 >> 4), false);
 }
 
 void released(Button2 &btn)
@@ -243,18 +283,12 @@ void released(Button2 &btn)
 void pirDetected(Button2 &btn)
 {
     log_d("--- detected.");
-
-    displayOn();
-    _checkSensor();
+    showLED = true;
 }
 
 void pirReleased(Button2 &btn)
 {
     log_d("released: %d", btn.wasPressedFor());
-
-    showSensor = false;
-    clocker.detach();
-    displayOff();
 }
 
 void initButton(void)
@@ -268,6 +302,51 @@ void initPIRSensor(void)
     pir_sensor.setReleasedHandler(pirReleased);
 }
 
+void fadeInDisplay(uint32_t ms)
+{
+    uint32_t period = ms / 18;
+
+    display.setBrightnessEx(0, false);
+    delay(period);
+
+    //log_d("%d", period);
+
+    for (int i = 0; i < 8; i++)
+    {
+        display.setBrightnessEx(i, true);
+        delay(period);
+        //log_d("%d %d", period, i);
+    }
+}
+
+void fadeOutDisplay(uint32_t ms)
+{
+    uint32_t period = ms / 18;
+
+    for (int i = 7; - 1 < i; i--)
+    {
+        display.setBrightnessEx(i, true);
+        delay(period);
+        //log_d("%d %d", period, i);
+    }
+
+    display.setBrightnessEx(0, false);
+    delay(period);
+    //log_d("%d", period);
+}
+
+void fadeInOutDisplay(uint32_t ms)
+{
+    fadeInDisplay(ms);
+    fadeOutDisplay(ms);
+}
+
+void initThingSpeak(void)
+{
+    _client.setCACert(certificate);
+    ThingSpeak.begin(_client);
+}
+
 void setup(void)
 {
     displayOn();
@@ -278,11 +357,13 @@ void setup(void)
     STB.begin(false, false);
 
     displayOff();
+
     initClock();
     initESPUI();
     initBME280();
     initButton();
     initPIRSensor();
+    initThingSpeak();
 }
 
 void loop(void)
@@ -290,18 +371,33 @@ void loop(void)
     STB.handle();
     button.loop();
     pir_sensor.loop();
-
-    if (showSensor)
+#if 1
+    if (showLED)
     {
-        clocker.attach_ms(500, _clock);
-        delay(5 * 1000);
-        clocker.detach();
-        printTemperature(bme280.getTemperature());
-        delay(2 * 1000);
-        printHumidity(bme280.getHumidity());
-        delay(2 * 1000);
-        printPressure(bme280.getPressure());
-        delay(2 * 1000);
+        display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 2), true);
+        fadeInOutDisplay(2 * 1000);
+        printTemperatureLED(temperature);
+        fadeInOutDisplay(1.5 * 1000);
+        printHumidityLED(humidity);
+        fadeInOutDisplay(1.5 * 1000);
+        printPressureLED(pressure);
+        fadeInOutDisplay(1.5 * 1000);
+        showLED = false;
+    }
+#endif
+
+    if (sendData)
+    {
+        temperature = bme280.getTemperature();
+        humidity = bme280.getHumidity();
+        pressure = bme280.getPressure();
+
+        printTemperatureESPUI(temperature);
+        printHumidityESPUI(humidity);
+        printPressureESPUI(pressure);
+
+        sendThingSpeakChannel(temperature, humidity, pressure);
+        sendData = false;
     }
 
     yield();

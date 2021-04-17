@@ -1,2 +1,58 @@
 # ESP32ClockDetectingMovement
-An NTP Clock detecting the movement of human and pets in the room. (Remodeling NITORI LED Digital Clock).
+
+**An NTP Clock detecting the movement of human or animal in a room.**(Remodeling NITORI LED Digital Clock).
+
+- PIRセンサー
+- BME280
+- ATOMLite
+- TM1637
+
+## test
+
+### PIRセンサーの仕様をまとめると
+
+1. Detect時刻：検出した時刻
+→（意味）人が動き始めた時刻
+
+2. 検出期間：検出～リリース時間：30秒、その間に再び検出すると、X秒づつ積み上がっていく。
+→（意味）人が動き続けた
+
+3. リリース時刻：検出しなくなり、30秒経過後の時刻
+→（意味）人の動きが停止した時刻
+
+4. 無検出期間：リリース時間～次回検出までの時間
+→（意味）時計の前で人が活動しなかった時間
+
+これらを、記録して、グラフに表し、統計処理を施す。 ThingSpeakでやってみる。
+
+- 一日の活動が何時から始まっているのか、記録できる。
+- 一日の活動が何時で終わっているのか、記録できる。
+- 夜間頻尿の人は何時に起きてトイレに行ったのかわかる。
+- 活動が活発か、低調かわかる。→じいじ、ばあばの調子がわるいのかも？
+
+```PIR.h
+
+detectTime;
+
+releaseTime;
+
+staticPeriod;
+
+dynamicPeriod;
+
+```
+
+通知
+
+詳細（１日）
+
+概要（1週間）
+
+電池切れ以外で活動がなかった場合。（オオカミ少年になる可能性あり。）慎重に決める必要あり。
+
+## step1
+
+ThingSpeakへ生データを投げてみる。おもしろーーーい！！！ｗｗｗｗ
+
+貢献できた。馬を水辺まで連れていくことが出来た。作者が取り入れるかは作者の課題だ。
+
