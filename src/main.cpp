@@ -43,8 +43,8 @@ SOFTWARE.
 #define NTP_SERVER2 "ntp.jst.mfeed.ad.jp"
 #define NTP_SERVER3 ""
 //For 7segLED
-#define CLK 22
-#define DIO 19
+#define CLK 19
+#define DIO 22
 //For BME280
 #define SDA 25
 #define SCL 21
@@ -74,8 +74,11 @@ uint16_t temperatureLabelId;
 uint16_t humidityLabelId;
 uint16_t pressureLabelId;
 
-bool showLED = false;
+bool detecting = false;
 bool sendData = false;
+
+int motionTime;
+int motionCount;
 
 unsigned long myChannelNumber = SECRET_CH_ID;
 const char *myWriteAPIKey = SECRET_WRITE_APIKEY;
@@ -94,13 +97,33 @@ void sendThingSpeakChannel(float temperature, float humidity, float pressure)
     // write to the ThingSpeak channel
     int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
     if (code == 200)
-    {
         log_d("Channel update successful.");
-    }
     else
-    {
         log_d("Problem updating channel. HTTP error code %d", code);
-    }
+}
+
+void sendMotionTime(int time)
+{
+    ThingSpeak.setField(4, time);
+
+    // write to the ThingSpeak channel
+    int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+    if (code == 200)
+        log_d("Channel update successful.");
+    else
+        log_d("Problem updating channel. HTTP error code %d", code);
+}
+
+void sendMotionCounts(int counts)
+{
+    ThingSpeak.setField(5, counts);
+
+    // write to the ThingSpeak channel
+    int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+    if (code == 200)
+        log_d("Channel update successful.");
+    else
+        log_d("Problem updating channel. HTTP error code %d", code);
 }
 
 void printTemperatureLED(float value)
@@ -283,12 +306,16 @@ void released(Button2 &btn)
 void pirDetected(Button2 &btn)
 {
     log_d("--- detected.");
-    showLED = true;
+    display.showDotsEx(0x80 >> 0);
+    display.setBrightnessEx(7, true);
+    detecting = true;
 }
 
 void pirReleased(Button2 &btn)
 {
-    log_d("released: %d", btn.wasPressedFor());
+    motionTime = btn.wasPressedFor();
+    log_d("released: %d", motionTime);
+    display.clear();
 }
 
 void initButton(void)
@@ -347,6 +374,31 @@ void initThingSpeak(void)
     ThingSpeak.begin(_client);
 }
 
+void showClock(void)
+{
+    display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 2), true);
+    fadeInOutDisplay(2 * 1000);
+    printTemperatureLED(temperature);
+    fadeInOutDisplay(1.5 * 1000);
+    printHumidityLED(humidity);
+    fadeInOutDisplay(1.5 * 1000);
+    printPressureLED(pressure);
+    fadeInOutDisplay(1.5 * 1000);
+}
+
+void sendThingSpeakData(void)
+{
+    temperature = bme280.getTemperature();
+    humidity = bme280.getHumidity();
+    pressure = bme280.getPressure();
+
+    printTemperatureESPUI(temperature);
+    printHumidityESPUI(humidity);
+    printPressureESPUI(pressure);
+
+    sendThingSpeakChannel(temperature, humidity, pressure);
+}
+
 void setup(void)
 {
     displayOn();
@@ -364,6 +416,9 @@ void setup(void)
     initButton();
     initPIRSensor();
     initThingSpeak();
+
+    sendThingSpeakData();
+    showClock();
 }
 
 void loop(void)
@@ -371,33 +426,24 @@ void loop(void)
     STB.handle();
     button.loop();
     pir_sensor.loop();
-#if 1
-    if (showLED)
-    {
-        display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 2), true);
-        fadeInOutDisplay(2 * 1000);
-        printTemperatureLED(temperature);
-        fadeInOutDisplay(1.5 * 1000);
-        printHumidityLED(humidity);
-        fadeInOutDisplay(1.5 * 1000);
-        printPressureLED(pressure);
-        fadeInOutDisplay(1.5 * 1000);
-        showLED = false;
-    }
-#endif
 
     if (sendData)
     {
-        temperature = bme280.getTemperature();
-        humidity = bme280.getHumidity();
-        pressure = bme280.getPressure();
-
-        printTemperatureESPUI(temperature);
-        printHumidityESPUI(humidity);
-        printPressureESPUI(pressure);
-
-        sendThingSpeakChannel(temperature, humidity, pressure);
+        sendThingSpeakData();
         sendData = false;
+        motionCount = 0;
+    }
+
+    if (detecting)
+    {
+        sendMotionCounts(motionCount++);
+        detecting = false;
+    }
+
+    if (motionTime)
+    {
+        sendMotionTime(motionTime);
+        motionTime = 0;
     }
 
     yield();
