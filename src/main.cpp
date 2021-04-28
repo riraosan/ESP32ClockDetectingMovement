@@ -77,7 +77,7 @@ uint16_t pressureLabelId;
 bool detecting = false;
 bool sendData = false;
 
-int motionTime;
+long motionTime;
 int motionCount;
 
 unsigned long myChannelNumber = SECRET_CH_ID;
@@ -102,7 +102,7 @@ void sendThingSpeakChannel(float temperature, float humidity, float pressure)
         log_d("Problem updating channel. HTTP error code %d", code);
 }
 
-void sendMotionTime(int time)
+void sendMotionTime(long time)
 {
     ThingSpeak.setField(4, time);
 
@@ -307,7 +307,7 @@ void pirDetected(Button2 &btn)
 {
     log_d("--- detected.");
     display.showDotsEx(0x80 >> 0);
-    display.setBrightnessEx(7, true);
+    display.setBrightnessEx(4, true);
     detecting = true;
 }
 
@@ -423,7 +423,9 @@ void setup(void)
 
 void loop(void)
 {
-    STB.handle();
+    if(STB.handle())
+        return;
+
     button.loop();
     pir_sensor.loop();
 
@@ -432,18 +434,22 @@ void loop(void)
         sendThingSpeakData();
         sendData = false;
         motionCount = 0;
+        delay(16000);
     }
 
     if (detecting)
     {
-        sendMotionCounts(motionCount++);
+        motionCount++;
+        sendMotionCounts(motionCount);
         detecting = false;
+        delay(16000);
     }
 
     if (motionTime)
     {
         sendMotionTime(motionTime);
         motionTime = 0;
+        delay(16000);
     }
 
     yield();
