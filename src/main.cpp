@@ -32,6 +32,7 @@ SOFTWARE.
 #include <WiFiClientSecure.h>
 #include <ThingSpeak.h>
 #include "secrets.h"
+#include <esp32_touch.hpp>
 //For log
 #include <esp32-hal-log.h>
 //For WiFi Connection
@@ -55,10 +56,14 @@ SOFTWARE.
 #define BUTTON_PIN 39
 //For PIR Detection
 #define PIR_SENSOR_PIN 23
+//For Enable LED Display
+#define TOUCH_IO_TOGGLE 8 // GPIO33
+#define TOUCH_THRESHOLD 92
+
+ESP32Touch touch;
 
 Button2 button = Button2(BUTTON_PIN);
 Button2 pir_sensor = Button2(PIR_SENSOR_PIN);
-
 Ticker clocker;
 Ticker sensorChecker;
 Ticker tempeChecker;
@@ -399,6 +404,16 @@ void sendThingSpeakData(void)
     sendThingSpeakChannel(temperature, humidity, pressure);
 }
 
+void initTouchSensor(void)
+{
+    touch.configure_input(TOUCH_IO_TOGGLE, TOUCH_THRESHOLD, []() {
+        log_d("Toggling the LED");
+        showClock();
+    });
+
+    touch.begin();
+}
+
 void setup(void)
 {
     displayOn();
@@ -415,6 +430,8 @@ void setup(void)
     initBME280();
     initButton();
     initPIRSensor();
+    initTouchSensor();
+
     initThingSpeak();
 
     sendThingSpeakData();
@@ -423,33 +440,33 @@ void setup(void)
 
 void loop(void)
 {
-    if(STB.handle())
-        return;
-
-    button.loop();
-    pir_sensor.loop();
-
-    if (sendData)
+    if (STB.handle() == false)
     {
-        sendThingSpeakData();
-        sendData = false;
-        motionCount = 0;
-        delay(16000);
-    }
+        button.loop();
+        pir_sensor.loop();
 
-    if (detecting)
-    {
-        motionCount++;
-        sendMotionCounts(motionCount);
-        detecting = false;
-        delay(16000);
-    }
+        if (sendData)
+        {
+            sendThingSpeakData();
+            sendData = false;
+            motionCount = 0;
+            delay(16000);
+        }
 
-    if (motionTime)
-    {
-        sendMotionTime(motionTime);
-        motionTime = 0;
-        delay(16000);
+        if (detecting)
+        {
+            motionCount++;
+            sendMotionCounts(motionCount);
+            detecting = false;
+            delay(16000);
+        }
+
+        if (motionTime)
+        {
+            sendMotionTime(motionTime);
+            motionTime = 0;
+            delay(16000);
+        }
     }
 
     yield();
