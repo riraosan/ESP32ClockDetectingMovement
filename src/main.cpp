@@ -33,6 +33,7 @@ SOFTWARE.
 #include <ThingSpeak.h>
 #include "secrets.h"
 #include <esp32_touch.hpp>
+#include <LED_DisPlay.h>
 //For log
 #include <esp32-hal-log.h>
 //For WiFi Connection
@@ -61,6 +62,7 @@ SOFTWARE.
 #define TOUCH_THRESHOLD 92
 
 ESP32Touch touch;
+LED_DisPlay led;
 
 Button2 button = Button2(BUTTON_PIN);
 Button2 pir_sensor = Button2(PIR_SENSOR_PIN);
@@ -414,6 +416,16 @@ void initTouchSensor(void)
     touch.begin();
 }
 
+void initLED(void)
+{
+    led.begin(1);
+    led.setTaskName("TheLED");
+    led.setTaskPriority(2);
+    led.start();
+    delay(50);
+    led.drawpix(0, 0x00f000);
+}
+
 void setup(void)
 {
     displayOn();
@@ -436,6 +448,7 @@ void setup(void)
 
     sendThingSpeakData();
     showClock();
+    initLED();
 }
 
 void loop(void)

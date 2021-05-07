@@ -132,8 +132,8 @@ void BME280Class::setup(int sdaPin, int sclPin)
         log_e("   ID of 0x56-0x58 represents a BMP 280,\n");
         log_e("        ID of 0x60 represents a BME 280.\n");
         log_e("        ID of 0x61 represents a BME 680.\n");
-        while (1)
-            delay(10);
+        //while (1)
+        //    delay(10);
     }
     else
     {
