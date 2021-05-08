@@ -313,8 +313,6 @@ void released(Button2 &btn)
 void pirDetected(Button2 &btn)
 {
     log_d("--- detected.");
-    display.showDotsEx(0x80 >> 0);
-    display.setBrightnessEx(4, true);
     detecting = true;
 }
 
@@ -322,7 +320,6 @@ void pirReleased(Button2 &btn)
 {
     motionTime = btn.wasPressedFor();
     log_d("released: %d", motionTime);
-    display.clear();
 }
 
 void initButton(void)
@@ -418,16 +415,19 @@ void initTouchSensor(void)
 
 void initLED(void)
 {
-    led.begin(1);
-    led.setTaskName("TheLED");
+    led.begin(1); //for ATOM Lite
+    led.setTaskName("ATOM_LITE_LED");
     led.setTaskPriority(2);
     led.start();
     delay(50);
-    led.drawpix(0, 0x00f000);
+    led.setBrightness(30);
 }
 
 void setup(void)
 {
+    initLED();
+    led.drawpix(0, CRGB::Red);
+
     displayOn();
 
     STB.setWiFiConnectChecker(connecting);
@@ -443,12 +443,12 @@ void setup(void)
     initButton();
     initPIRSensor();
     initTouchSensor();
-
     initThingSpeak();
+
+    led.drawpix(0, CRGB::Green);
 
     sendThingSpeakData();
     showClock();
-    initLED();
 }
 
 void loop(void)
@@ -468,6 +468,9 @@ void loop(void)
 
         if (detecting)
         {
+            display.showDotsEx(0x80 >> 0);
+            display.setBrightnessEx(1, true);
+
             motionCount++;
             sendMotionCounts(motionCount);
             detecting = false;
@@ -476,6 +479,9 @@ void loop(void)
 
         if (motionTime)
         {
+            display.showDotsEx(0x80 >> 4);
+            display.setBrightnessEx(1, true);
+
             sendMotionTime(motionTime);
             motionTime = 0;
             delay(16000);
