@@ -31,7 +31,7 @@ SOFTWARE.
 #include <Button2.h>
 #include <WiFiClientSecure.h>
 #include <ThingSpeak.h>
-#include "secrets.h"
+#include <secrets.h>
 #include <esp32_touch.hpp>
 #include <LED_DisPlay.h>
 //For log
@@ -442,7 +442,7 @@ void setup(void)
     initBME280();
     initButton();
     initPIRSensor();
-    initTouchSensor();
+    //initTouchSensor();
     initThingSpeak();
 
     led.drawpix(0, CRGB::Green);
