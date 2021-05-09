@@ -484,15 +484,15 @@ void loop(void)
             motionCount = 0;
         }
 
-        if (detecting)
-        {
-            display.showDotsEx(0x80 >> 0);
-            display.setBrightnessEx(1, true);
+        // if (detecting)
+        // {
+        //     display.showDotsEx(0x80 >> 0);
+        //     display.setBrightnessEx(1, true);
 
-            motionCount++;
-            sendMotionCounts(motionCount);
-            detecting = false;
-        }
+        //     motionCount++;
+        //     sendMotionCounts(motionCount);
+        //     detecting = false;
+        // }
 
         if (motionTime)
         {
