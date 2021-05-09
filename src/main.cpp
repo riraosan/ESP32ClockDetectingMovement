@@ -97,9 +97,21 @@ float pressure;
 
 void sendThingSpeakChannel(float temperature, float humidity, float pressure)
 {
-    ThingSpeak.setField(1, temperature);
-    ThingSpeak.setField(2, humidity);
-    ThingSpeak.setField(3, pressure);
+    char buffer1[16] = {0};
+    char buffer2[16] = {0};
+    char buffer3[16] = {0};
+
+    sprintf(buffer1, "%2.1f", temperature);
+    sprintf(buffer2, "%2.1f", humidity);
+    sprintf(buffer3, "%4.1f", pressure);
+
+    String tempe(buffer1);
+    String humid(buffer2);
+    String press(buffer3);
+
+    ThingSpeak.setField(1, tempe);
+    ThingSpeak.setField(2, humid);
+    ThingSpeak.setField(3, press);
 
     // write to the ThingSpeak channel
     int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
@@ -111,7 +123,7 @@ void sendThingSpeakChannel(float temperature, float humidity, float pressure)
 
 void sendMotionTime(long time)
 {
-    ThingSpeak.setField(4, time);
+    ThingSpeak.setField(4, time / 1000); //ms to sec
 
     // write to the ThingSpeak channel
     int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
@@ -148,7 +160,7 @@ void printTemperatureESPUI(float value)
 
     sprintf(buffer, "%2.1f℃", value);
     String tempUI(buffer);
-    ESPUI.updateControlValue(temperatureLabelId, tempUI);
+    ESPUI.updateControlValue(temperatureLabelId, tempUI); //TODO
 }
 
 void printHumidityLED(float value)
@@ -396,11 +408,18 @@ void sendThingSpeakData(void)
     humidity = bme280.getHumidity();
     pressure = bme280.getPressure();
 
-    printTemperatureESPUI(temperature);
-    printHumidityESPUI(humidity);
-    printPressureESPUI(pressure);
+    if (temperature != NAN && humidity != NAN && pressure != NAN)
+    {
+        printTemperatureESPUI(temperature);
+        printHumidityESPUI(humidity);
+        printPressureESPUI(pressure);
 
-    sendThingSpeakChannel(temperature, humidity, pressure);
+        sendThingSpeakChannel(temperature, humidity, pressure);
+    }
+    else
+    {
+        log_e("temperature = %f, humidity = %f, pressure = %f", temperature, humidity, pressure);
+    }
 }
 
 void initTouchSensor(void)
@@ -463,7 +482,6 @@ void loop(void)
             sendThingSpeakData();
             sendData = false;
             motionCount = 0;
-            delay(16000);
         }
 
         if (detecting)
@@ -474,7 +492,6 @@ void loop(void)
             motionCount++;
             sendMotionCounts(motionCount);
             detecting = false;
-            delay(16000);
         }
 
         if (motionTime)
@@ -484,7 +501,6 @@ void loop(void)
 
             sendMotionTime(motionTime);
             motionTime = 0;
-            delay(16000);
         }
     }
 

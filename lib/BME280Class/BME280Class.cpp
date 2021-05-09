@@ -43,7 +43,7 @@ float BME280Class::getTemperature(void)
         return value;
     }
 
-    return -1;
+    return NAN;
 }
 
 float BME280Class::getPressure(void)
@@ -56,7 +56,7 @@ float BME280Class::getPressure(void)
         return pascals / 100.0f;
     }
 
-    return -1;
+    return NAN;
 }
 
 float BME280Class::getHumidity(void)
@@ -69,7 +69,7 @@ float BME280Class::getHumidity(void)
         return humidity;
     }
 
-    return -1;
+    return NAN;
 }
 
 float BME280Class::getAltitude(float seaLevel)
@@ -82,7 +82,7 @@ float BME280Class::getAltitude(float seaLevel)
         return altitude;
     }
 
-    return -1;
+    return NAN;
 }
 
 uint32_t BME280Class::getSensorID(void)
