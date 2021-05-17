@@ -76,11 +76,6 @@ TM1637Display display(CLK, DIO);
 
 WiFiClientSecure _client;
 
-uint16_t timeLabelId;
-uint16_t temperatureLabelId;
-uint16_t humidityLabelId;
-uint16_t pressureLabelId;
-
 bool detecting = false;
 bool sendData = false;
 
@@ -154,15 +149,6 @@ void printTemperatureLED(float value)
     display.showNumberHexEx(strtol(buffer, 0, 16), (0x80 >> 2), false, 3, 1);
 }
 
-void printTemperatureESPUI(float value)
-{
-    char buffer[16] = {0};
-
-    sprintf(buffer, "%2.1f℃", value);
-    String tempUI(buffer);
-    ESPUI.updateControlValue(temperatureLabelId, tempUI); //TODO
-}
-
 void printHumidityLED(float value)
 {
     char buffer[16] = {0};
@@ -173,15 +159,6 @@ void printHumidityLED(float value)
     display.showNumberDecEx(humidLed.toInt(), (0x80 >> 0), false);
 }
 
-void printHumidityESPUI(float value)
-{
-    char buffer[16] = {0};
-
-    sprintf(buffer, "%2.1f%%", value);
-    String humidUI(buffer);
-    ESPUI.updateControlValue(humidityLabelId, humidUI);
-}
-
 void printPressureLED(float value)
 {
     char buffer[16] = {0};
@@ -190,36 +167,6 @@ void printPressureLED(float value)
     String pressLed(buffer);
     display.clear();
     display.showNumberDecEx(pressLed.toInt(), (0x80 >> 0), false);
-}
-
-void printPressureESPUI(float value)
-{
-    char buffer[16] = {0};
-
-    sprintf(buffer, "%2.1fhPa", value);
-    String pressUI(buffer);
-    ESPUI.updateControlValue(pressureLabelId, pressUI);
-}
-
-void _checkTemperature(void)
-{
-    float value = bme280.getTemperature();
-
-    printTemperatureESPUI(value);
-}
-
-void _checkHumidity(void)
-{
-    float value = bme280.getHumidity();
-
-    printHumidityESPUI(value);
-}
-
-void _checkPressure(void)
-{
-    float value = bme280.getPressure();
-
-    printPressureESPUI(value);
 }
 
 void _checkSensor(void)
@@ -255,28 +202,20 @@ String getTime(void)
     return String(buffer);
 }
 
-void _clock(void)
-{
-    ESPUI.updateControlValue(timeLabelId, getTime());
-}
-
 void initClock(void)
 {
     configTzTime(TIME_ZONE, NTP_SERVER1, NTP_SERVER2, NTP_SERVER3);
-    clocker.attach_ms(500, _clock);
 }
 
 void initESPUI(void)
 {
     ESPUI.setVerbosity(Verbosity::Quiet);
 
-    uint16_t tab1 = ESPUI.addControl(ControlType::Tab, "Date & Time", "Date & Time");
-    uint16_t tab2 = ESPUI.addControl(ControlType::Tab, "Weather Station", "Weather Station");
+    //デバイスの状態
+    ESPUI.addControl(ControlType::Label, "Device IP Address", "", ControlColor::Emerald, Control::noParent);
+    ESPUI.addControl(ControlType::Label, "Device Host Name", "", ControlColor::Sunflower, Control::noParent);
 
-    timeLabelId = ESPUI.addControl(ControlType::Label, "[ Date & Time ]", "0", ControlColor::Emerald, tab1);
-    temperatureLabelId = ESPUI.addControl(ControlType::Label, "[ Temperature ]", "0", ControlColor::Sunflower, tab2);
-    humidityLabelId = ESPUI.addControl(ControlType::Label, "[ Humidity ]", "0", ControlColor::Sunflower, tab2);
-    pressureLabelId = ESPUI.addControl(ControlType::Label, "[ Pressure ]", "0", ControlColor::Sunflower, tab2);
+    //時刻表示パターンの設定
 
     ESPUI.begin("ESP32 NTP Clock");
 }
@@ -299,12 +238,6 @@ void initBME280(void)
     sensorChecker.attach(60, _checkSensor);
 }
 
-void initLightSleep(void)
-{
-    esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
-    log_d("Setup ESP32 to sleep for every %s Seconds", String(TIME_TO_SLEEP).c_str());
-}
-
 void connecting(void)
 {
     static uint8_t flag = 0;
@@ -324,8 +257,8 @@ void released(Button2 &btn)
 
 void pirDetected(Button2 &btn)
 {
-    log_d("--- detected.");
     detecting = true;
+    log_d("--- detected.");
 }
 
 void pirReleased(Button2 &btn)
@@ -341,7 +274,7 @@ void initButton(void)
 
 void initPIRSensor(void)
 {
-    pir_sensor.setPressedHandler(pirDetected);
+    //pir_sensor.setPressedHandler(pirDetected);
     pir_sensor.setReleasedHandler(pirReleased);
 }
 
@@ -352,13 +285,10 @@ void fadeInDisplay(uint32_t ms)
     display.setBrightnessEx(0, false);
     delay(period);
 
-    //log_d("%d", period);
-
     for (int i = 0; i < 8; i++)
     {
         display.setBrightnessEx(i, true);
         delay(period);
-        //log_d("%d %d", period, i);
     }
 }
 
@@ -370,12 +300,10 @@ void fadeOutDisplay(uint32_t ms)
     {
         display.setBrightnessEx(i, true);
         delay(period);
-        //log_d("%d %d", period, i);
     }
 
     display.setBrightnessEx(0, false);
     delay(period);
-    //log_d("%d", period);
 }
 
 void fadeInOutDisplay(uint32_t ms)
@@ -404,16 +332,8 @@ void showClock(void)
 
 void sendThingSpeakData(void)
 {
-    temperature = bme280.getTemperature();
-    humidity = bme280.getHumidity();
-    pressure = bme280.getPressure();
-
-    if (temperature != NAN && humidity != NAN && pressure != NAN)
+    if (bme280.getTemperature(temperature) && bme280.getHumidity(humidity) && bme280.getPressure(pressure))
     {
-        printTemperatureESPUI(temperature);
-        printHumidityESPUI(humidity);
-        printPressureESPUI(pressure);
-
         sendThingSpeakChannel(temperature, humidity, pressure);
     }
     else
@@ -424,10 +344,11 @@ void sendThingSpeakData(void)
 
 void initTouchSensor(void)
 {
-    touch.configure_input(TOUCH_IO_TOGGLE, TOUCH_THRESHOLD, []() {
-        log_d("Toggling the LED");
-        showClock();
-    });
+    touch.configure_input(TOUCH_IO_TOGGLE, TOUCH_THRESHOLD, []()
+                          {
+                              log_d("Toggling the LED");
+                              showClock();
+                          });
 
     touch.begin();
 }
@@ -456,12 +377,12 @@ void setup(void)
 
     displayOff();
 
-    initClock();
-    initESPUI();
     initBME280();
+
+    initClock();
     initButton();
     initPIRSensor();
-    //initTouchSensor();
+    initTouchSensor();
     initThingSpeak();
 
     led.drawpix(0, CRGB::Green);
@@ -481,24 +402,10 @@ void loop(void)
         {
             sendThingSpeakData();
             sendData = false;
-            motionCount = 0;
         }
-
-        // if (detecting)
-        // {
-        //     display.showDotsEx(0x80 >> 0);
-        //     display.setBrightnessEx(1, true);
-
-        //     motionCount++;
-        //     sendMotionCounts(motionCount);
-        //     detecting = false;
-        // }
 
         if (motionTime)
         {
-            display.showDotsEx(0x80 >> 4);
-            display.setBrightnessEx(1, true);
-
             sendMotionTime(motionTime);
             motionTime = 0;
         }

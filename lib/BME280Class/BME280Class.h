@@ -35,16 +35,15 @@ public:
     BME280Class();
     ~BME280Class();
 
-    static void sendSensorInfo(void);
-
-    void initBME280HumiditySensing(void);
     void initBME280WeatherStation(void);
-    void initUnifiedBME280(void);
+    void initBME280HumiditySensing(void);
+    void initBME280IndoorNavigation(void);
+    void initBME280Gaming(void);
 
-    float getTemperature(void);
-    float getPressure(void);
-    float getHumidity(void);
-    float getAltitude(float seaLevel);
+    bool getTemperature(float &value);
+    bool getPressure(float &value);
+    bool getHumidity(float &value);
+    bool getAltitude(float &seaLevel);
     uint32_t getSensorID(void);
 
     void setup(int sdaPin, int sclPin);

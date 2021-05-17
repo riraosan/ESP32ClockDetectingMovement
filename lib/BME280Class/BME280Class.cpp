@@ -33,56 +33,58 @@ BME280Class::BME280Class()
 
 BME280Class::~BME280Class() {}
 
-float BME280Class::getTemperature(void)
+bool BME280Class::getTemperature(float &value)
 {
     if (_bme->takeForcedMeasurement())
     {
-        float value = _bme->readTemperature();
+        value = _bme->readTemperature();
         log_d("Temperature = %2.1f*C", value);
 
-        return value;
+        return true;
     }
 
-    return NAN;
+    return false;
 }
 
-float BME280Class::getPressure(void)
+bool BME280Class::getPressure(float &value)
 {
     if (_bme->takeForcedMeasurement())
     {
         float pascals = _bme->readPressure();
         log_d("Pressure = %4.1f(hPa)", pascals / 100.0f);
 
-        return pascals / 100.0f;
+        value = pascals / 100.0f;
+
+        return true;
     }
 
-    return NAN;
+    return false;
 }
 
-float BME280Class::getHumidity(void)
+bool BME280Class::getHumidity(float &value)
 {
     if (_bme->takeForcedMeasurement())
     {
-        float humidity = _bme->readHumidity();
-        log_d("Humidity = %2.1f%%", humidity);
+        value = _bme->readHumidity();
+        log_d("Humidity = %2.1f%%", value);
 
-        return humidity;
+        return true;
     }
 
-    return NAN;
+    return false;
 }
 
-float BME280Class::getAltitude(float seaLevel)
+bool BME280Class::getAltitude(float &seaLevel)
 {
     if (_bme->takeForcedMeasurement())
     {
-        float altitude = _bme->readAltitude(SENSORS_PRESSURE_SEALEVELHPA);
-        log_d("Altitude = %4.1f m", altitude);
+        seaLevel = _bme->readAltitude(SENSORS_PRESSURE_SEALEVELHPA);
+        log_d("Altitude = %4.1f m", seaLevel);
 
-        return altitude;
+        return true;
     }
 
-    return NAN;
+    return false;
 }
 
 uint32_t BME280Class::getSensorID(void)
@@ -100,6 +102,7 @@ void BME280Class::initBME280WeatherStation(void)
     log_i("-- Weather Station Scenario --");
     log_i("forced mode, 1x temperature / 1x humidity / 1x pressure oversampling,");
     log_i("filter off");
+    // suggested rate is 1/60Hz (1m)
     _bme->setSampling(Adafruit_BME280::MODE_FORCED,
                       Adafruit_BME280::SAMPLING_X1, // temperature
                       Adafruit_BME280::SAMPLING_X1, // pressure
@@ -111,13 +114,44 @@ void BME280Class::initBME280WeatherStation(void)
 void BME280Class::initBME280HumiditySensing(void)
 {
     log_i("-- Humidity Sensing Scenario --");
-    log_i("forced mode, 2x temperature / 4x humidity / 0x pressure oversampling");
+    log_i("forced mode, 1x temperature / 1x humidity / 0x pressure oversampling");
     log_i("= pressure off, filter off");
+    // suggested rate is 1Hz (1s)
     _bme->setSampling(Adafruit_BME280::MODE_FORCED,
-                      Adafruit_BME280::SAMPLING_X2,   // temperature
+                      Adafruit_BME280::SAMPLING_X1,   // temperature
                       Adafruit_BME280::SAMPLING_NONE, // pressure
-                      Adafruit_BME280::SAMPLING_X4,   // humidity
+                      Adafruit_BME280::SAMPLING_X1,   // humidity
                       Adafruit_BME280::FILTER_OFF);
+}
+
+// indoor navigation
+void BME280Class::initBME280IndoorNavigation(void)
+{
+    log_i("-- Indoor Navigation Scenario --");
+    log_i("normal mode, 16x pressure / 2x temperature / 1x humidity oversampling,");
+    log_i("0.5ms standby period, filter 16x");
+    // suggested rate is 25Hz
+    _bme->setSampling(Adafruit_BME280::MODE_NORMAL,
+                      Adafruit_BME280::SAMPLING_X2,  // temperature
+                      Adafruit_BME280::SAMPLING_X16, // pressure
+                      Adafruit_BME280::SAMPLING_X1,  // humidity
+                      Adafruit_BME280::FILTER_X16,
+                      Adafruit_BME280::STANDBY_MS_0_5);
+}
+
+// gaming
+void BME280Class::initBME280Gaming(void)
+{
+    log_i("-- Gaming Scenario --");
+    log_i("normal mode, 4x pressure / 1x temperature / 0x humidity oversampling,");
+    log_i("= humidity off, 0.5ms standby period, filter 16x");
+    // Suggested rate is 83Hz
+    _bme->setSampling(Adafruit_BME280::MODE_NORMAL,
+                      Adafruit_BME280::SAMPLING_X1,   // temperature
+                      Adafruit_BME280::SAMPLING_X4,   // pressure
+                      Adafruit_BME280::SAMPLING_NONE, // humidity
+                      Adafruit_BME280::FILTER_X16,
+                      Adafruit_BME280::STANDBY_MS_0_5);
 }
 
 void BME280Class::setup(int sdaPin, int sclPin)
@@ -132,8 +166,6 @@ void BME280Class::setup(int sdaPin, int sclPin)
         log_e("   ID of 0x56-0x58 represents a BMP 280,\n");
         log_e("        ID of 0x60 represents a BME 280.\n");
         log_e("        ID of 0x61 represents a BME 680.\n");
-        //while (1)
-        //    delay(10);
     }
     else
     {
@@ -141,7 +173,6 @@ void BME280Class::setup(int sdaPin, int sclPin)
         log_d("SensorID was: 0x%x", _bme->sensorID());
 
         initBME280WeatherStation();
-        //initBME280HumiditySensing();
     }
 }
 
