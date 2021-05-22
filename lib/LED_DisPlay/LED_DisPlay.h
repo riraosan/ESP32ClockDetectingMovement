@@ -31,9 +31,9 @@ class LED_DisPlay : public Task {
         kAnmiation_frush,
     } Dismode;
     enum {
-        kMoveRight = 0x01,
-        kMoveLeft = 0x02,
-        kMoveTop = 0x04,
+        kMoveRight  = 0x01,
+        kMoveLeft   = 0x02,
+        kMoveTop    = 0x04,
         kMoveButtom = 0x08,
     } Am_mode;
 
@@ -47,8 +47,7 @@ class LED_DisPlay : public Task {
     void begin(uint8_t LEDNumbre = NUM_LEDS);
     void run(void *data);
 
-    void animation(uint8_t *buffptr, uint8_t amspeed, uint8_t ammode,
-                   int64_t amcount = -1);
+    void animation(uint8_t *buffptr, uint8_t amspeed, uint8_t ammode, int64_t amcount = -1);
     void displaybuff(uint8_t *buffptr, int8_t offsetx = 0, int8_t offsety = 0);
     void MoveDisPlayBuff(int8_t offsetx = 0, int8_t offsety = 0);
 

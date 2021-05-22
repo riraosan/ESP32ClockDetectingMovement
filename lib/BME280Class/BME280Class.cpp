@@ -27,7 +27,7 @@ SOFTWARE.
 
 BME280Class::BME280Class() {
     _sensor_ID = 0;
-    _bme = new Adafruit_BME280();
+    _bme       = new Adafruit_BME280();
 }
 
 BME280Class::~BME280Class() {}

@@ -1,6 +1,7 @@
 {
     //https://clang.llvm.org/docs/ClangFormatStyleOptions.html
-    "C_Cpp.clang_format_style": "{BasedOnStyle: Google, IndentWidth: 4, , BreakStringLiterals: false, AlignConsecutiveAssignments: Consecutive, AlignConsecutiveMacros: AcrossEmptyLinesAndComments}",
+    "C_Cpp.clang_format_style": "{BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, BreakStringLiterals: false, AlignConsecutiveAssignments: Consecutive, AlignConsecutiveMacros: AcrossEmptyLinesAndComments, AlwaysBreakBeforeMultilineStrings: false}",
+    "C_Cpp.clang_format_fallbackStyle": "{BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, BreakStringLiterals: false, AlignConsecutiveAssignments: Consecutive, AlignConsecutiveMacros: AcrossEmptyLinesAndComments, AlwaysBreakBeforeMultilineStrings: false}",
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
     "editor.formatOnPaste": true,
@@ -34,6 +35,5 @@
     "[markdown]": {
       "editor.wordWrap": "off",
       "files.trimTrailingWhitespace": false,
-    },
-    "C_Cpp.vcFormat.indent.namespaceContents": false,
+    }
 }

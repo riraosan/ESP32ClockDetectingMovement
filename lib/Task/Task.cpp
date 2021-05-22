@@ -8,12 +8,12 @@
 static char tag[] = "Task";
 
 Task::Task(std::string taskName, uint16_t taskSize, uint8_t priority) {
-    m_handle = nullptr;
+    m_handle   = nullptr;
     m_taskdata = nullptr;
     m_taskname = taskName;
     m_tasksize = taskSize;
     m_priority = priority;
-    m_coreid = tskNO_AFFINITY;
+    m_coreid   = tskNO_AFFINITY;
 }
 
 Task::~Task() {}
@@ -31,8 +31,7 @@ void Task::start(void *taskData) {
         ESP_LOGD(tag, "[] Task %s is already running", m_taskname.c_str());
     }
     m_taskdata = taskData;
-    ::xTaskCreatePinnedToCore(&runTask, m_taskname.c_str(), m_tasksize, this,
-                              m_priority, &m_handle, m_coreid);
+    ::xTaskCreatePinnedToCore(&runTask, m_taskname.c_str(), m_tasksize, this, m_priority, &m_handle, m_coreid);
 }
 
 void Task::stop() {
@@ -40,7 +39,7 @@ void Task::stop() {
         return;
     }
     xTaskHandle handleTemp = m_handle;
-    m_handle = nullptr;
+    m_handle               = nullptr;
     ::vTaskDelete(handleTemp);
 }
 

@@ -38,23 +38,19 @@ SOFTWARE.
 // For log
 #include <esp32-hal-log.h>
 // For WiFi Connection
-#define HOSTNAME    "atom_clock"
-#define AP_NAME     "ATOM-G-AP"
+#define HOSTNAME        "atom_clock"
+#define AP_NAME         "ATOM-G-AP"
 // For NTP Clock
-#define TIME_ZONE   "JST-9"
-#define NTP_SERVER1 "ntp.nict.jp"
-#define NTP_SERVER2 "ntp.jst.mfeed.ad.jp"
-#define NTP_SERVER3 ""
+#define TIME_ZONE       "JST-9"
+#define NTP_SERVER1     "ntp.nict.jp"
+#define NTP_SERVER2     "ntp.jst.mfeed.ad.jp"
+#define NTP_SERVER3     ""
 // For 7segLED
-#define CLK         19
-#define DIO         22
+#define CLK             19
+#define DIO             22
 // For BME280
-#define SDA         25
-#define SCL         21
-// For Light Sleep(not use)
-#define uS_TO_S_FACTOR \
-    1000000ULL             /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP   48 /* Time ESP32 will go to sleep (in seconds) */
+#define SDA             25
+#define SCL             21
 // For resetting WiFi
 #define BUTTON_PIN      39
 // For PIR Detection
@@ -183,8 +179,7 @@ String getTime(void) {
     struct tm* tm = localtime(&t);
 
     char buffer[128] = {0};
-    sprintf(buffer, "%04d-%02d-%02dT%02d:%02d:%02d+0900", tm->tm_year + 1900,
-            tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
+    sprintf(buffer, "%04d-%02d-%02dT%02d:%02d:%02d+0900", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
 
     return String(buffer);
 }
@@ -207,10 +202,8 @@ void initESPUI(void) {
     ESPUI.setVerbosity(Verbosity::Quiet);
 
     //デバイスの状態
-    ESPUI.addControl(ControlType::Label, "Device IP Address", "",
-                     ControlColor::Emerald, Control::noParent);
-    ESPUI.addControl(ControlType::Label, "Device Host Name", "",
-                     ControlColor::Sunflower, Control::noParent);
+    ESPUI.addControl(ControlType::Label, "Device IP Address", "", ControlColor::Emerald, Control::noParent);
+    ESPUI.addControl(ControlType::Label, "Device Host Name", "", ControlColor::Sunflower, Control::noParent);
 
     //時刻表示パターンの設定
 
@@ -307,12 +300,10 @@ void showEnvData(void) {
 }
 
 void sendThingSpeakData(void) {
-    if (bme280.getTemperature(temperature) && bme280.getHumidity(humidity) &&
-        bme280.getPressure(pressure)) {
+    if (bme280.getTemperature(temperature) && bme280.getHumidity(humidity) && bme280.getPressure(pressure)) {
         sendThingSpeakChannel(temperature, humidity, pressure);
     } else {
-        log_e("temperature = %f, humidity = %f, pressure = %f", temperature,
-              humidity, pressure);
+        log_e("temperature = %f, humidity = %f, pressure = %f", temperature, humidity, pressure);
     }
 }
 
