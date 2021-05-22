@@ -29,6 +29,13 @@ SOFTWARE.
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 
+enum class MODE : int{
+    WEATHER_STATION,
+    HUMIDITY_SENSING,
+    INDOOR_NAVIGATION,
+    GAMING,
+};
+
 class BME280Class
 {
 public:
@@ -46,7 +53,7 @@ public:
     bool getAltitude(float &seaLevel);
     uint32_t getSensorID(void);
 
-    void setup(int sdaPin, int sclPin);
+    void setup(int sdaPin, int sclPin, MODE mode);
     void handle(void);
 
 private:

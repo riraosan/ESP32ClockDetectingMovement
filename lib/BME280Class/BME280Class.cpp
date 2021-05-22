@@ -154,7 +154,7 @@ void BME280Class::initBME280Gaming(void)
                       Adafruit_BME280::STANDBY_MS_0_5);
 }
 
-void BME280Class::setup(int sdaPin, int sclPin)
+void BME280Class::setup(int sdaPin, int sclPin, MODE mode)
 {
     Wire.setPins(sdaPin, sclPin);
 
@@ -162,17 +162,32 @@ void BME280Class::setup(int sdaPin, int sclPin)
     {
         log_e("Could not find a valid BME280 sensor, check wiring, address, sensor ID!");
         log_e("SensorID was: 0x%x", _bme->sensorID());
-        log_e("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085\n");
-        log_e("   ID of 0x56-0x58 represents a BMP 280,\n");
-        log_e("        ID of 0x60 represents a BME 280.\n");
-        log_e("        ID of 0x61 represents a BME 680.\n");
+        log_e("        ID of 0xFF probably means a bad address, a BMP 180 or BMP 085");
+        log_e("   ID of 0x56-0x58 represents a BMP 280,");
+        log_e("        ID of 0x60 represents a BME 280.");
+        log_e("        ID of 0x61 represents a BME 680.");
     }
     else
     {
         log_d("ESP could find a BME280 sensor!");
         log_d("SensorID was: 0x%x", _bme->sensorID());
 
-        initBME280WeatherStation();
+        switch(mode){
+        case MODE::WEATHER_STATION:
+            initBME280WeatherStation();
+        break;
+        case MODE::HUMIDITY_SENSING:
+            initBME280HumiditySensing();
+        break;
+        case MODE::INDOOR_NAVIGATION:
+            initBME280IndoorNavigation();
+        break;
+        case MODE::GAMING:
+            initBME280Gaming();
+        break;
+        default:
+                ;
+        }
     }
 }
 

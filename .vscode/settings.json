@@ -12,4 +12,8 @@
     "C_Cpp.vcFormat.indent.caseLabels": true,
     "C_Cpp.vcFormat.indent.braces": true,
     "C_Cpp.vcFormat.newLine.beforeOpenBrace.lambda": "sameLine",
+    "files.associations": {
+        "istream": "cpp",
+        "ostream": "cpp"
+    },
 }

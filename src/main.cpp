@@ -246,7 +246,7 @@ void displayOff(void)
 
 void initBME280(void)
 {
-    bme280.setup(SDA, SCL);
+    bme280.setup(SDA, SCL, MODE::WEATHER_STATION);
     sensorChecker.attach(60, _checkSensor);
 }
 
@@ -352,21 +352,24 @@ void sendThingSpeakData(void)
     }
 }
 
-void initTouchSensor(void)
-{
-    static bool toggle = true;
-    touch.configure_input(TOUCH_IO_TOGGLE, TOUCH_THRESHOLD, [ ] () {
+void initTouchSensor(void){
+    static uint8_t toggle = 0;
+
+    touch.configure_input(TOUCH_IO_TOGGLE, TOUCH_THRESHOLD, [](){
         log_d("Toggling Clock LED");
-        showEnvData();
-        if (toggle)
-        {
+
+        if (toggle){
+            displayOff();
+            showEnvData();
+            displayOn();
             clocker.attach_ms(500, displayClock);
-            toggle = false;
-        } else
-        {
-            clocker.detach();
-            toggle = true;
         }
+        else{
+            clocker.detach();
+            displayOff();
+        }
+
+        toggle = ~toggle;
     });
 
     touch.begin();
@@ -407,6 +410,10 @@ void setup(void)
     led.drawpix(0, CRGB::Green);
 
     sendThingSpeakData();
+
+    showEnvData();
+    displayOn();
+    clocker.attach_ms(500, displayClock);
 }
 
 void loop(void)
