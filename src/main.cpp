@@ -66,6 +66,7 @@ LED_DisPlay led;
 
 Button2 button = Button2(BUTTON_PIN);
 Button2 pir_sensor = Button2(PIR_SENSOR_PIN);
+
 Ticker clocker;
 Ticker sensorChecker;
 Ticker tempeChecker;
@@ -83,8 +84,8 @@ long motionTime;
 int motionCount;
 
 unsigned long myChannelNumber = SECRET_CH_ID;
-const char *myWriteAPIKey = SECRET_WRITE_APIKEY;
-const char *certificate = SECRET_TS_ROOT_CA;
+const char* myWriteAPIKey = SECRET_WRITE_APIKEY;
+const char* certificate = SECRET_TS_ROOT_CA;
 
 float temperature;
 float humidity;
@@ -92,9 +93,9 @@ float pressure;
 
 void sendThingSpeakChannel(float temperature, float humidity, float pressure)
 {
-    char buffer1[16] = {0};
-    char buffer2[16] = {0};
-    char buffer3[16] = {0};
+    char buffer1[16] = { 0 };
+    char buffer2[16] = { 0 };
+    char buffer3[16] = { 0 };
 
     sprintf(buffer1, "%2.1f", temperature);
     sprintf(buffer2, "%2.1f", humidity);
@@ -142,7 +143,7 @@ void sendMotionCounts(int counts)
 
 void printTemperatureLED(float value)
 {
-    char buffer[16] = {0};
+    char buffer[16] = { 0 };
     sprintf(buffer, "0x%2.0fC", value);
 
     display.clear();
@@ -151,7 +152,7 @@ void printTemperatureLED(float value)
 
 void printHumidityLED(float value)
 {
-    char buffer[16] = {0};
+    char buffer[16] = { 0 };
 
     sprintf(buffer, "%2f", value);
     String humidLed(buffer);
@@ -161,7 +162,7 @@ void printHumidityLED(float value)
 
 void printPressureLED(float value)
 {
-    char buffer[16] = {0};
+    char buffer[16] = { 0 };
 
     sprintf(buffer, "%4f", value);
     String pressLed(buffer);
@@ -177,9 +178,9 @@ void _checkSensor(void)
 String getLEDTime(void)
 {
     time_t t = time(NULL);
-    struct tm *tm = localtime(&t);
+    struct tm* tm = localtime(&t);
 
-    char buffer[16] = {0};
+    char buffer[16] = { 0 };
     sprintf(buffer, "%02d%02d", tm->tm_hour, tm->tm_min);
 
     return String(buffer);
@@ -188,9 +189,9 @@ String getLEDTime(void)
 String getTime(void)
 {
     time_t t = time(NULL);
-    struct tm *tm = localtime(&t);
+    struct tm* tm = localtime(&t);
 
-    char buffer[128] = {0};
+    char buffer[128] = { 0 };
     sprintf(buffer, "%04d-%02d-%02dT%02d:%02d:%02d+0900",
             tm->tm_year + 1900,
             tm->tm_mon + 1,
@@ -200,6 +201,17 @@ String getTime(void)
             tm->tm_sec);
 
     return String(buffer);
+}
+
+void displayClock(void)
+{
+    static uint8_t flag = 0;
+    flag = ~flag;
+
+    if (flag)
+        display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 2), true);
+    else
+        display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 4), true);
 }
 
 void initClock(void)
@@ -249,19 +261,19 @@ void connecting(void)
         display.showNumberDecEx(0, (0x80 >> 4), false);
 }
 
-void released(Button2 &btn)
+void released(Button2& btn)
 {
     WiFi.disconnect(true, true);
     ESP.restart();
 }
 
-void pirDetected(Button2 &btn)
+void pirDetected(Button2& btn)
 {
     detecting = true;
     log_d("--- detected.");
 }
 
-void pirReleased(Button2 &btn)
+void pirReleased(Button2& btn)
 {
     motionTime = btn.wasPressedFor();
     log_d("released: %d", motionTime);
@@ -274,7 +286,6 @@ void initButton(void)
 
 void initPIRSensor(void)
 {
-    //pir_sensor.setPressedHandler(pirDetected);
     pir_sensor.setReleasedHandler(pirReleased);
 }
 
@@ -296,7 +307,7 @@ void fadeOutDisplay(uint32_t ms)
 {
     uint32_t period = ms / 18;
 
-    for (int i = 7; - 1 < i; i--)
+    for (int i = 7; -1 < i; i--)
     {
         display.setBrightnessEx(i, true);
         delay(period);
@@ -318,14 +329,14 @@ void initThingSpeak(void)
     ThingSpeak.begin(_client);
 }
 
-void showClock(void)
+void showEnvData(void)
 {
-    display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 2), true);
-    fadeInOutDisplay(2 * 1000);
     printTemperatureLED(temperature);
     fadeInOutDisplay(1.5 * 1000);
+
     printHumidityLED(humidity);
     fadeInOutDisplay(1.5 * 1000);
+
     printPressureLED(pressure);
     fadeInOutDisplay(1.5 * 1000);
 }
@@ -335,8 +346,7 @@ void sendThingSpeakData(void)
     if (bme280.getTemperature(temperature) && bme280.getHumidity(humidity) && bme280.getPressure(pressure))
     {
         sendThingSpeakChannel(temperature, humidity, pressure);
-    }
-    else
+    } else
     {
         log_e("temperature = %f, humidity = %f, pressure = %f", temperature, humidity, pressure);
     }
@@ -344,11 +354,20 @@ void sendThingSpeakData(void)
 
 void initTouchSensor(void)
 {
-    touch.configure_input(TOUCH_IO_TOGGLE, TOUCH_THRESHOLD, []()
-                          {
-                              log_d("Toggling the LED");
-                              showClock();
-                          });
+    static bool toggle = true;
+    touch.configure_input(TOUCH_IO_TOGGLE, TOUCH_THRESHOLD, [ ] () {
+        log_d("Toggling Clock LED");
+        showEnvData();
+        if (toggle)
+        {
+            clocker.attach_ms(500, displayClock);
+            toggle = false;
+        } else
+        {
+            clocker.detach();
+            toggle = true;
+        }
+    });
 
     touch.begin();
 }
@@ -388,7 +407,6 @@ void setup(void)
     led.drawpix(0, CRGB::Green);
 
     sendThingSpeakData();
-    showClock();
 }
 
 void loop(void)
