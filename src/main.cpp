@@ -34,32 +34,31 @@ SOFTWARE.
 #include <WiFiClientSecure.h>
 #include <secrets.h>
 
-
 #include <esp32_touch.hpp>
 // For log
 #include <esp32-hal-log.h>
 // For WiFi Connection
-#define HOSTNAME "atom_clock"
-#define AP_NAME "ATOM-G-AP"
+#define HOSTNAME    "atom_clock"
+#define AP_NAME     "ATOM-G-AP"
 // For NTP Clock
-#define TIME_ZONE "JST-9"
+#define TIME_ZONE   "JST-9"
 #define NTP_SERVER1 "ntp.nict.jp"
 #define NTP_SERVER2 "ntp.jst.mfeed.ad.jp"
 #define NTP_SERVER3 ""
 // For 7segLED
-#define CLK 19
-#define DIO 22
+#define CLK         19
+#define DIO         22
 // For BME280
-#define SDA 25
-#define SCL 21
+#define SDA         25
+#define SCL         21
 // For Light Sleep(not use)
 #define uS_TO_S_FACTOR \
-    1000000ULL           /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP 48 /* Time ESP32 will go to sleep (in seconds) */
+    1000000ULL             /* Conversion factor for micro seconds to seconds */
+#define TIME_TO_SLEEP   48 /* Time ESP32 will go to sleep (in seconds) */
 // For resetting WiFi
-#define BUTTON_PIN 39
+#define BUTTON_PIN      39
 // For PIR Detection
-#define PIR_SENSOR_PIN 23
+#define PIR_SENSOR_PIN  23
 // For Enable LED Display
 #define TOUCH_IO_TOGGLE 8  // GPIO33
 #define TOUCH_THRESHOLD 92
@@ -67,7 +66,7 @@ SOFTWARE.
 ESP32Touch touch;
 LED_DisPlay led;
 
-Button2 button = Button2(BUTTON_PIN);
+Button2 button     = Button2(BUTTON_PIN);
 Button2 pir_sensor = Button2(PIR_SENSOR_PIN);
 
 Ticker clocker;
@@ -81,14 +80,14 @@ TM1637Display display(CLK, DIO);
 WiFiClientSecure _client;
 
 bool detecting = false;
-bool sendData = false;
+bool sendData  = false;
 
 long motionTime;
 int motionCount;
 
 unsigned long myChannelNumber = SECRET_CH_ID;
-const char* myWriteAPIKey = SECRET_WRITE_APIKEY;
-const char* certificate = SECRET_TS_ROOT_CA;
+const char* myWriteAPIKey     = SECRET_WRITE_APIKEY;
+const char* certificate       = SECRET_TS_ROOT_CA;
 
 float temperature;
 float humidity;
@@ -170,7 +169,7 @@ void printPressureLED(float value) {
 void _checkSensor(void) { sendData = true; }
 
 String getLEDTime(void) {
-    time_t t = time(NULL);
+    time_t t      = time(NULL);
     struct tm* tm = localtime(&t);
 
     char buffer[16] = {0};
@@ -180,7 +179,7 @@ String getLEDTime(void) {
 }
 
 String getTime(void) {
-    time_t t = time(NULL);
+    time_t t      = time(NULL);
     struct tm* tm = localtime(&t);
 
     char buffer[128] = {0};
@@ -192,7 +191,7 @@ String getTime(void) {
 
 void displayClock(void) {
     static uint8_t flag = 0;
-    flag = ~flag;
+    flag                = ~flag;
 
     if (flag)
         display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 2), true);
@@ -235,7 +234,7 @@ void initBME280(void) {
 
 void connecting(void) {
     static uint8_t flag = 0;
-    flag = ~flag;
+    flag                = ~flag;
 
     if (flag)
         display.showNumberDecEx(0, (0x80 >> 3), false);

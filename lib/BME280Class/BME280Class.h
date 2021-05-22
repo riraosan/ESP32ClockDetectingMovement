@@ -24,21 +24,20 @@ SOFTWARE.
 
 #pragma once
 
+#include <Adafruit_BME280.h>
+#include <Adafruit_Sensor.h>
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
 
-enum class MODE : int{
+enum class MODE : int {
     WEATHER_STATION,
     HUMIDITY_SENSING,
     INDOOR_NAVIGATION,
     GAMING,
 };
 
-class BME280Class
-{
-public:
+class BME280Class {
+   public:
     BME280Class();
     ~BME280Class();
 
@@ -56,7 +55,7 @@ public:
     void setup(int sdaPin, int sclPin, MODE mode);
     void handle(void);
 
-private:
+   private:
     Adafruit_BME280 *_bme;
     Adafruit_Sensor *_pressur;
     Adafruit_Sensor *_temperature;
