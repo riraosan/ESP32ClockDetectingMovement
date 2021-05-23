@@ -115,7 +115,9 @@ void sendThingSpeakChannel(float temperature, float humidity, float pressure) {
 }
 
 void sendMotionTime(long time) {
-    ThingSpeak.setField(4, time / 1000 / 60);  // ms to min
+    float min = time / 1000 / 60;
+
+    ThingSpeak.setField(4, min);  // ms to min
 
     // write to the ThingSpeak channel
     int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
