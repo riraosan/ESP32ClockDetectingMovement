@@ -89,6 +89,10 @@ float temperature;
 float humidity;
 float pressure;
 
+uint16_t alarm_hour;
+uint16_t alarm_min;
+uint16_t enable_alarm;
+
 void sendThingSpeakChannel(float temperature, float humidity, float pressure) {
     char buffer1[16] = {0};
     char buffer2[16] = {0};
@@ -200,14 +204,33 @@ void initClock(void) {
     configTzTime(TIME_ZONE, NTP_SERVER1, NTP_SERVER2, NTP_SERVER3);
 }
 
+void selectAlarmAMPM(Control* sender, int value) {
+    log_i("Select: ID: %d Value: %d", sender->id, sender->value);
+}
+
+void selectAlarmHour(Control* sender, int value) {
+}
+
+void selectAlarmMinuite(Control* sender, int value) {
+}
+
 void initESPUI(void) {
     ESPUI.setVerbosity(Verbosity::Quiet);
 
-    //デバイスの状態
-    ESPUI.addControl(ControlType::Label, "Device IP Address", "", ControlColor::Emerald, Control::noParent);
-    ESPUI.addControl(ControlType::Label, "Device Host Name", "", ControlColor::Sunflower, Control::noParent);
+    uint16_t tab1 = ESPUI.addControl(ControlType::Tab, "Network Information", "Network Information");
+    uint16_t tab2 = ESPUI.addControl(ControlType::Tab, "Alarm Settings", "Alarm Settings");
+    //uint16_t tab3 = ESPUI.addControl(ControlType::Tab, "Settings 3", "Settings 3");
 
-    //時刻表示パターンの設定
+    //Nwtwork Settings infomation
+    ESPUI.addControl(ControlType::Label, "Device SSID", WiFi.SSID(), ControlColor::Sunflower, tab1);
+    ESPUI.addControl(ControlType::Label, "Device MAC Address", WiFi.macAddress(), ControlColor::Sunflower, tab1);
+    ESPUI.addControl(ControlType::Label, "Device IP Address", WiFi.localIP().toString(), ControlColor::Sunflower, tab1);
+    ESPUI.addControl(ControlType::Label, "Device Host Name", HOSTNAME, ControlColor::Sunflower, tab1);
+
+    //Alarm Settings
+    uint16_t select1 = ESPUI.addControl(ControlType::Select, "Select:", "", ControlColor::Alizarin, tab2, &selectAlarmAMPM);
+    ESPUI.addControl(ControlType::Option, "AM", "AM", ControlColor::Alizarin, select1);
+    ESPUI.addControl(ControlType::Option, "PM", "PM", ControlColor::Alizarin, select1);
 
     ESPUI.begin("ATOM NTP Clock");
 }
@@ -360,6 +383,7 @@ void setup(void) {
     initPIRSensor();
     initTouchSensor();
     initThingSpeak();
+    initESPUI();
 
     led.drawpix(0, CRGB::Green);
 
@@ -375,14 +399,16 @@ void loop(void) {
         button.loop();
         pir_sensor.loop();
 
-        if (sendData) {
-            sendThingSpeakData();
-            sendData = false;
-        }
-
         if (motionTime) {
             sendMotionTime(motionTime);
             motionTime = 0;
+            delay(15 * 1000);
+        }
+
+        if (sendData) {
+            sendThingSpeakData();
+            sendData = false;
+            delay(15 * 1000);
         }
     }
 
