@@ -209,28 +209,57 @@ void selectAlarmAMPM(Control* sender, int value) {
 }
 
 void selectAlarmHour(Control* sender, int value) {
+    log_i("Select: ID: %d Value: %d", sender->id, sender->value);
 }
 
 void selectAlarmMinuite(Control* sender, int value) {
+    log_i("Select: ID: %d Value: %d", sender->id, sender->value);
+}
+
+void switchAlarmEnable(Control* sender, int value) {
+    log_i("Select: ID: %d Value: %d", sender->id, sender->value);
 }
 
 void initESPUI(void) {
     ESPUI.setVerbosity(Verbosity::Quiet);
 
-    uint16_t tab1 = ESPUI.addControl(ControlType::Tab, "Network Information", "Network Information");
     uint16_t tab2 = ESPUI.addControl(ControlType::Tab, "Alarm Settings", "Alarm Settings");
-    //uint16_t tab3 = ESPUI.addControl(ControlType::Tab, "Settings 3", "Settings 3");
+    uint16_t tab1 = ESPUI.addControl(ControlType::Tab, "Network Information", "Network Information");
 
     //Nwtwork Settings infomation
-    ESPUI.addControl(ControlType::Label, "Device SSID", WiFi.SSID(), ControlColor::Sunflower, tab1);
-    ESPUI.addControl(ControlType::Label, "Device MAC Address", WiFi.macAddress(), ControlColor::Sunflower, tab1);
-    ESPUI.addControl(ControlType::Label, "Device IP Address", WiFi.localIP().toString(), ControlColor::Sunflower, tab1);
-    ESPUI.addControl(ControlType::Label, "Device Host Name", HOSTNAME, ControlColor::Sunflower, tab1);
+    ESPUI.addControl(ControlType::Label, "WiFi SSID", WiFi.SSID(), ControlColor::Sunflower, tab1);
+    ESPUI.addControl(ControlType::Label, "ESP32 MAC Address", WiFi.macAddress(), ControlColor::Sunflower, tab1);
+    ESPUI.addControl(ControlType::Label, "ESP32 IP Address", WiFi.localIP().toString(), ControlColor::Sunflower, tab1);
+    ESPUI.addControl(ControlType::Label, "ESP32 Host Name", HOSTNAME, ControlColor::Sunflower, tab1);
 
     //Alarm Settings
-    uint16_t select1 = ESPUI.addControl(ControlType::Select, "Select:", "", ControlColor::Alizarin, tab2, &selectAlarmAMPM);
+    uint16_t select1 = ESPUI.addControl(ControlType::Select, "AM/PM", "1", ControlColor::Alizarin, tab2, &selectAlarmAMPM);
     ESPUI.addControl(ControlType::Option, "AM", "AM", ControlColor::Alizarin, select1);
     ESPUI.addControl(ControlType::Option, "PM", "PM", ControlColor::Alizarin, select1);
+
+    uint16_t select2 = ESPUI.addControl(ControlType::Select, "Hour", "1", ControlColor::Alizarin, tab2, &selectAlarmHour);
+    ESPUI.addControl(ControlType::Option, "1", "1", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "2", "2", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "3", "3", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "4", "4", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "5", "5", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "6", "6", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "7", "7", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "8", "8", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "9", "9", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "10", "10", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "11", "11", ControlColor::Alizarin, select2);
+    ESPUI.addControl(ControlType::Option, "12", "12", ControlColor::Alizarin, select2);
+
+    uint16_t select3 = ESPUI.addControl(ControlType::Select, "Minuets", "0", ControlColor::Alizarin, tab2, &selectAlarmMinuite);
+    ESPUI.addControl(ControlType::Option, "0", "0", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "10", "10", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "20", "20", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "30", "30", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "40", "40", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "50", "50", ControlColor::Alizarin, select3);
+
+    ESPUI.addControl(ControlType::Switcher, "Alarm ON/OFF", "", ControlColor::None, tab2, &switchAlarmEnable);
 
     ESPUI.begin("ATOM NTP Clock");
 }
@@ -332,6 +361,15 @@ void sendThingSpeakData(void) {
     }
 }
 
+void setNtpClockNetworkInfo(void) {
+    char buffer[255] = {0};
+
+    sprintf(buffer, "%s %s %s", WiFi.SSID().c_str(), WiFi.macAddress().c_str(), WiFi.localIP().toString().c_str());
+    String networkInfo(buffer);
+
+    ThingSpeak.setStatus(networkInfo);  //ThingSpeak limits this to 255 bytes.
+}
+
 void initTouchSensor(void) {
     static uint8_t toggle = 0;
 
@@ -387,6 +425,7 @@ void setup(void) {
 
     led.drawpix(0, CRGB::Green);
 
+    setNtpClockNetworkInfo();
     sendThingSpeakData();
 
     showEnvData();
