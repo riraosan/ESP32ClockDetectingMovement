@@ -35,51 +35,42 @@ SOFTWARE.
 #include <secrets.h>
 
 #include <esp32_touch.hpp>
-// For log
+// log
 #include <esp32-hal-log.h>
-// For WiFi Connection
+// WiFi Connection
 #define HOSTNAME        "atom_clock"
 #define AP_NAME         "ATOM-G-AP"
-// For NTP Clock
+// NTP Clock
 #define TIME_ZONE       "JST-9"
 #define NTP_SERVER1     "ntp.nict.jp"
 #define NTP_SERVER2     "ntp.jst.mfeed.ad.jp"
 #define NTP_SERVER3     ""
-// For 7segLED
+// 7segLED TM1637
 #define CLK             19
 #define DIO             22
-// For BME280
+// BME280
 #define SDA             25
 #define SCL             21
-// For resetting WiFi
+// WiFi reset
 #define BUTTON_PIN      39
-// For PIR Detection
+// PIR Detection
 #define PIR_SENSOR_PIN  23
-// For Enable LED Display
+// Enable/Disable LED Display
 #define TOUCH_IO_TOGGLE 8  // GPIO33
 #define TOUCH_THRESHOLD 92
 
-ESP32Touch touch;
-LED_DisPlay led;
-
-Button2 button     = Button2(BUTTON_PIN);
-Button2 pir_sensor = Button2(PIR_SENSOR_PIN);
-
 Ticker clocker;
 Ticker sensorChecker;
-Ticker tempeChecker;
-Ticker humidChecker;
-Ticker pressChecker;
-
+ESP32Touch touch;
+LED_DisPlay led;
+Button2 button     = Button2(BUTTON_PIN);
+Button2 pir_sensor = Button2(PIR_SENSOR_PIN);
 TM1637Display display(CLK, DIO);
-
 WiFiClientSecure _client;
 
-bool detecting = false;
-bool sendData  = false;
-
-long motionTime;
-int motionCount;
+bool sendData        = false;
+long motionTime      = 0;
+bool motionDetecting = false;
 
 unsigned long myChannelNumber = SECRET_CH_ID;
 const char* myWriteAPIKey     = SECRET_WRITE_APIKEY;
@@ -92,6 +83,16 @@ float pressure;
 uint16_t alarm_hour;
 uint16_t alarm_min;
 uint16_t enable_alarm;
+
+void displayOn(void) {
+    display.clear();
+    display.setBrightness(7, true);
+}
+
+void displayOff(void) {
+    display.clear();
+    display.setBrightness(7, false);
+}
 
 void sendThingSpeakChannel(float temperature, float humidity, float pressure) {
     char buffer1[16] = {0};
@@ -167,13 +168,25 @@ String getTime(void) {
 }
 
 void displayClock(void) {
+    uint8_t dots        = 0;
     static uint8_t flag = 0;
     flag                = ~flag;
 
-    if (flag)
-        display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 2), true);
-    else
-        display.showNumberDecEx(getLEDTime().toInt(), (0x80 >> 4), true);
+    if (motionDetecting) {
+        if (flag) {
+            dots = (0x80 >> 2) | (0x80 >> 0);
+        } else {
+            dots = (0x80 >> 0);
+        }
+    } else {
+        if (flag) {
+            dots = (0x80 >> 2);
+        } else {
+            dots = 0;
+        }
+    }
+
+    display.showNumberDecEx(getLEDTime().toInt(), dots, true);
 }
 
 void initClock(void) {
@@ -213,7 +226,8 @@ void initESPUI(void) {
     ESPUI.addControl(ControlType::Option, "AM", "AM", ControlColor::Alizarin, select1);
     ESPUI.addControl(ControlType::Option, "PM", "PM", ControlColor::Alizarin, select1);
 
-    uint16_t select2 = ESPUI.addControl(ControlType::Select, "Hour", "1", ControlColor::Alizarin, tab2, &selectAlarmHour);
+    uint16_t select2 = ESPUI.addControl(ControlType::Select, "Hour", "12", ControlColor::Alizarin, tab2, &selectAlarmHour);
+    ESPUI.addControl(ControlType::Option, "12", "12", ControlColor::Alizarin, select2);
     ESPUI.addControl(ControlType::Option, "1", "1", ControlColor::Alizarin, select2);
     ESPUI.addControl(ControlType::Option, "2", "2", ControlColor::Alizarin, select2);
     ESPUI.addControl(ControlType::Option, "3", "3", ControlColor::Alizarin, select2);
@@ -225,29 +239,24 @@ void initESPUI(void) {
     ESPUI.addControl(ControlType::Option, "9", "9", ControlColor::Alizarin, select2);
     ESPUI.addControl(ControlType::Option, "10", "10", ControlColor::Alizarin, select2);
     ESPUI.addControl(ControlType::Option, "11", "11", ControlColor::Alizarin, select2);
-    ESPUI.addControl(ControlType::Option, "12", "12", ControlColor::Alizarin, select2);
 
     uint16_t select3 = ESPUI.addControl(ControlType::Select, "Minuets", "0", ControlColor::Alizarin, tab2, &selectAlarmMinuite);
     ESPUI.addControl(ControlType::Option, "0", "0", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "5", "5", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "10", "10", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "15", "15", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "20", "20", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "25", "25", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "30", "30", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "35", "35", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "40", "40", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "45", "4", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "50", "50", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "55", "55", ControlColor::Alizarin, select3);
 
     ESPUI.addControl(ControlType::Switcher, "Alarm ON/OFF", "", ControlColor::None, tab2, &switchAlarmEnable);
 
     ESPUI.begin("ATOM NTP Clock");
-}
-
-void displayOn(void) {
-    display.setBrightness(7, true);
-    display.clear();
-}
-
-void displayOff(void) {
-    display.setBrightness(7, false);
-    display.clear();
 }
 
 void initBME280(void) {
@@ -271,27 +280,31 @@ void released(Button2& btn) {
 }
 
 void pirDetected(Button2& btn) {
-    detecting = true;
     log_d("--- detected.");
+    motionDetecting = true;
 }
 
 void pirReleased(Button2& btn) {
     motionTime = btn.wasPressedFor();
-    log_d("released: %d", motionTime);
+    log_d("--- released: %d", motionTime);
+    motionDetecting = false;
 }
 
 void initButton(void) { button.setReleasedHandler(released); }
 
-void initPIRSensor(void) { pir_sensor.setReleasedHandler(pirReleased); }
+void initPIRSensor(void) {
+    pir_sensor.setReleasedHandler(pirReleased);
+    pir_sensor.setPressedHandler(pirDetected);
+}
 
 void fadeInDisplay(uint32_t ms) {
     uint32_t period = ms / 18;
 
-    display.setBrightnessEx(0, false);
+    display.setBrightness(0, false);
     delay(period);
 
     for (int i = 0; i < 8; i++) {
-        display.setBrightnessEx(i, true);
+        display.setBrightness(i, true);
         delay(period);
     }
 }
@@ -300,11 +313,11 @@ void fadeOutDisplay(uint32_t ms) {
     uint32_t period = ms / 18;
 
     for (int i = 7; - 1 < i; i--) {
-        display.setBrightnessEx(i, true);
+        display.setBrightness(i, true);
         delay(period);
     }
 
-    display.setBrightnessEx(0, false);
+    display.setBrightness(0, false);
     delay(period);
 }
 
