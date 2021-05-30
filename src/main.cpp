@@ -118,30 +118,6 @@ void sendThingSpeakChannel(float temperature, float humidity, float pressure) {
         log_d("Problem updating channel. HTTP error code %d", code);
 }
 
-void sendMotionTime(long time) {
-    float min = time / 1000 / 60;
-
-    ThingSpeak.setField(4, min);  // ms to min
-
-    // write to the ThingSpeak channel
-    int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
-    if (code == 200)
-        log_d("Channel update successful.");
-    else
-        log_d("Problem updating channel. HTTP error code %d", code);
-}
-
-void sendMotionCounts(int counts) {
-    ThingSpeak.setField(5, counts);
-
-    // write to the ThingSpeak channel
-    int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
-    if (code == 200)
-        log_d("Channel update successful.");
-    else
-        log_d("Problem updating channel. HTTP error code %d", code);
-}
-
 void printTemperatureLED(float value) {
     char buffer[16] = {0};
     sprintf(buffer, "0x%2.0fC", value);
@@ -359,6 +335,14 @@ void sendThingSpeakData(void) {
     } else {
         log_e("temperature = %f, humidity = %f, pressure = %f", temperature, humidity, pressure);
     }
+}
+
+void sendMotionTime(long time) {
+    float min = time / 1000 / 60;
+
+    ThingSpeak.setField(4, min);  // ms to min
+
+    sendThingSpeakData();
 }
 
 void setNtpClockNetworkInfo(void) {
