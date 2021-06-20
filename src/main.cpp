@@ -194,19 +194,36 @@ void initClock(void) {
 }
 
 void selectAlarmAMPM(Control* sender, int value) {
-    log_i("Select: ID: %d Value: %d", sender->id, sender->value);
+    log_i("Select: ID: %d Value: %s", sender->id, sender->value);
+    if (sender->value == "1") {
+        //Set AM
+        display.addDots(0x80 >> 1);
+    } else {
+        //Set PM
+        display.addDots(0x80 >> 3);
+    }
 }
 
 void selectAlarmHour(Control* sender, int value) {
-    log_i("Select: ID: %d Value: %d", sender->id, sender->value);
+    log_i("Select: ID: %d Value: %s", sender->id, sender->value);
+    long hours = sender->value.toInt();
+    //set hour
 }
 
 void selectAlarmMinuite(Control* sender, int value) {
-    log_i("Select: ID: %d Value: %d", sender->id, sender->value);
+    log_i("Select: ID: %d Value: %s", sender->id, sender->value);
+    long minuets = sender->value.toInt();
+    //set minuets
 }
 
 void switchAlarmEnable(Control* sender, int value) {
-    log_i("Select: ID: %d Value: %d", sender->id, sender->value);
+    log_i("Select: ID: %d Value: %s", sender->id, sender->value);
+    if (sender->value == "1") {
+        //TODO calc second to alrm time
+        //TODO create timer attach_once()
+    } else {
+        //TODO delete timer detach()
+    }
 }
 
 void initESPUI(void) {
@@ -223,10 +240,10 @@ void initESPUI(void) {
 
     //Alarm Settings
     uint16_t select1 = ESPUI.addControl(ControlType::Select, "AM/PM", "1", ControlColor::Alizarin, tab2, &selectAlarmAMPM);
-    ESPUI.addControl(ControlType::Option, "AM", "AM", ControlColor::Alizarin, select1);
-    ESPUI.addControl(ControlType::Option, "PM", "PM", ControlColor::Alizarin, select1);
+    ESPUI.addControl(ControlType::Option, "AM", "1", ControlColor::Alizarin, select1);
+    ESPUI.addControl(ControlType::Option, "PM", "2", ControlColor::Alizarin, select1);
 
-    uint16_t select2 = ESPUI.addControl(ControlType::Select, "Hour", "12", ControlColor::Alizarin, tab2, &selectAlarmHour);
+    uint16_t select2 = ESPUI.addControl(ControlType::Select, "Hours", "12", ControlColor::Alizarin, tab2, &selectAlarmHour);
     ESPUI.addControl(ControlType::Option, "12", "12", ControlColor::Alizarin, select2);
     ESPUI.addControl(ControlType::Option, "1", "1", ControlColor::Alizarin, select2);
     ESPUI.addControl(ControlType::Option, "2", "2", ControlColor::Alizarin, select2);
@@ -250,11 +267,11 @@ void initESPUI(void) {
     ESPUI.addControl(ControlType::Option, "30", "30", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "35", "35", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "40", "40", ControlColor::Alizarin, select3);
-    ESPUI.addControl(ControlType::Option, "45", "4", ControlColor::Alizarin, select3);
+    ESPUI.addControl(ControlType::Option, "45", "45", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "50", "50", ControlColor::Alizarin, select3);
     ESPUI.addControl(ControlType::Option, "55", "55", ControlColor::Alizarin, select3);
 
-    ESPUI.addControl(ControlType::Switcher, "Alarm ON/OFF", "", ControlColor::None, tab2, &switchAlarmEnable);
+    ESPUI.addControl(ControlType::Switcher, "Alarm ON/OFF", "0", ControlColor::Alizarin, tab2, &switchAlarmEnable);
 
     ESPUI.begin("ATOM NTP Clock");
 }
@@ -430,6 +447,7 @@ void setup(void) {
     clocker.attach_ms(500, displayClock);
 }
 
+//main task?
 void loop(void) {
     if (STB.handle() == false) {
         button.loop();
