@@ -23,16 +23,21 @@ SOFTWARE.
 */
 
 #define TS_ENABLE_SSL  // Don't forget it for ThingSpeak.h!!
+#include <Arduino.h>
+#include <WebServer.h>
+#include <WiFi.h>
+typedef WebServer WiFiWebServer;
+#include <AutoConnect.h>
 #include <BME280Class.h>
 #include <Button2.h>
 #include <ESPUI.h>
 #include <LED_DisPlay.h>
-#include <SerialTelnetBridge.h>
 #include <TM1637Display.h>
 #include <ThingSpeak.h>
 #include <Ticker.h>
 #include <WiFiClientSecure.h>
 #include <secrets.h>
+#include <timezone.h>
 
 #include <esp32_touch.hpp>
 // log
@@ -59,6 +64,11 @@ SOFTWARE.
 #define TOUCH_IO_TOGGLE 8  // GPIO33
 #define TOUCH_THRESHOLD 92
 
+WebServer Server;
+AutoConnect Portal(Server);
+AutoConnectConfig Config;  // Enable autoReconnect supported on v0.9.4
+AutoConnectAux Timezone;
+
 Ticker clocker;
 Ticker sensorChecker;
 ESP32Touch touch;
@@ -83,6 +93,60 @@ float pressure;
 uint16_t alarm_hour;
 uint16_t alarm_min;
 uint16_t enable_alarm;
+
+void rootPage() {
+    String content =
+        "<html>"
+        "<head>"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+        "<script type=\"text/javascript\">"
+        "setTimeout(\"location.reload()\", 1000);"
+        "</script>"
+        "</head>"
+        "<body>"
+        "<h2 align=\"center\" style=\"color:blue;margin:20px;\">Hello, world</h2>"
+        "<h3 align=\"center\" style=\"color:gray;margin:10px;\">{{DateTime}}</h3>"
+        "<p style=\"text-align:center;\">Reload the page to update the time.</p>"
+        "<p></p><p style=\"padding-top:15px;text-align:center\">" AUTOCONNECT_LINK(COG_24) "</p>"
+                                                                                           "</body>"
+                                                                                           "</html>";
+    static const char* wd[7] = {"Sun", "Mon", "Tue", "Wed", "Thr", "Fri", "Sat"};
+    struct tm* tm;
+    time_t t;
+    char dateTime[26];
+
+    t  = time(NULL);
+    tm = localtime(&t);
+    sprintf(dateTime, "%04d/%02d/%02d(%s) %02d:%02d:%02d.",
+            tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+            wd[tm->tm_wday],
+            tm->tm_hour, tm->tm_min, tm->tm_sec);
+    content.replace("{{DateTime}}", String(dateTime));
+    Server.send(200, "text/html", content);
+}
+
+void startPage() {
+    // Retrieve the value of AutoConnectElement with arg function of WebServer class.
+    // Values are accessible with the element name.
+    String tz = Server.arg("timezone");
+
+    for (uint8_t n = 0; n < sizeof(TZ) / sizeof(Timezone_t); n++) {
+        String tzName = String(TZ[n].zone);
+        if (tz.equalsIgnoreCase(tzName)) {
+            configTime(TZ[n].tzoff * 3600, 0, TZ[n].ntpServer);
+            log_d("Time zone: %s", tz.c_str());
+            log_d("ntp server: %s", String(TZ[n].ntpServer).c_str());
+            break;
+        }
+    }
+
+    // The /start page just constitutes timezone,
+    // it redirects to the root page without the content response.
+    Server.sendHeader("Location", String("http://") + Server.client().localIP().toString() + String("/"));
+    Server.send(302, "text/plain", "");
+    Server.client().flush();
+    Server.client().stop();
+}
 
 void displayOn(void) {
     display.clear();
@@ -415,16 +479,40 @@ void initLED(void) {
     led.setBrightness(30);
 }
 
+void initAutoConnect(void) {
+    // Enable saved past credential by autoReconnect option,
+    // even once it is disconnected.
+    Config.autoReconnect = true;
+    Portal.config(Config);
+
+    // Load aux. page
+    Timezone.load(AUX_TIMEZONE);
+    // Retrieve the select element that holds the time zone code and
+    // register the zone mnemonic in advance.
+    AutoConnectSelect& tz = Timezone["timezone"].as<AutoConnectSelect>();
+    for (uint8_t n = 0; n < sizeof(TZ) / sizeof(Timezone_t); n++) {
+        tz.add(String(TZ[n].zone));
+    }
+
+    Portal.join({Timezone});  // Register aux. page
+
+    // Behavior a root path of ESP8266WebServer.
+    Server.on("/", rootPage);
+    Server.on("/start", startPage);  // Set NTP server trigger handler
+
+    // Establish a connection with an autoReconnect option.
+    if (Portal.begin()) {
+        log_i("WiFi connected: %s", WiFi.localIP().toString().c_str());
+    }
+}
+
 void setup(void) {
     initLED();
     led.drawpix(0, CRGB::Red);
 
     displayOn();
 
-    STB.setWiFiConnectChecker(connecting);
-    STB.setHostname(HOSTNAME);
-    STB.setApName(AP_NAME);
-    STB.begin(false, false);
+    initAutoConnect();
 
     displayOff();
 
@@ -449,21 +537,20 @@ void setup(void) {
 
 //main task?
 void loop(void) {
-    if (STB.handle() == false) {
-        button.loop();
-        pir_sensor.loop();
+    Portal.handleClient();
+    button.loop();
+    pir_sensor.loop();
 
-        if (motionTime) {
-            sendMotionTime(motionTime);
-            motionTime = 0;
-            delay(15 * 1000);
-        }
+    if (motionTime) {
+        sendMotionTime(motionTime);
+        motionTime = 0;
+        delay(15 * 1000);
+    }
 
-        if (sendData) {
-            sendThingSpeakData();
-            sendData = false;
-            delay(15 * 1000);
-        }
+    if (sendData) {
+        sendThingSpeakData();
+        sendData = false;
+        delay(15 * 1000);
     }
 
     yield();
