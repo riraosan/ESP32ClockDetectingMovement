@@ -31,6 +31,7 @@ typedef WebServer WiFiWebServer;
 #include <BME280Class.h>
 #include <Button2.h>
 #include <ESPUI.h>
+#include <ESPmDNS.h>
 #include <LED_DisPlay.h>
 #include <TM1637Display.h>
 #include <ThingSpeak.h>
@@ -63,6 +64,7 @@ typedef WebServer WiFiWebServer;
 // Enable/Disable LED Display
 #define TOUCH_IO_TOGGLE 8  // GPIO33
 #define TOUCH_THRESHOLD 92
+#define HTTP_PORT       80
 
 WebServer Server;
 AutoConnect Portal(Server);
@@ -94,7 +96,7 @@ uint16_t alarm_hour;
 uint16_t alarm_min;
 uint16_t enable_alarm;
 
-void rootPage() {
+void rootPage(void) {
     String content =
         "<html>"
         "<head>"
@@ -125,7 +127,7 @@ void rootPage() {
     Server.send(200, "text/html", content);
 }
 
-void startPage() {
+void startPage(void) {
     // Retrieve the value of AutoConnectElement with arg function of WebServer class.
     // Values are accessible with the element name.
     String tz = Server.arg("timezone");
@@ -146,6 +148,24 @@ void startPage() {
     Server.send(302, "text/plain", "");
     Server.client().flush();
     Server.client().stop();
+}
+
+void otaPage(void) {
+    String content = R"(
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1">
+        </head>
+        <body>
+        Place the root page with the sketch application.&ensp;
+        __AC_LINK__
+        </body>
+        </html>
+    )";
+
+    content.replace("__AC_LINK__", String(AUTOCONNECT_LINK(COG_16)));
+    Server.send(200, "text/html", content);
 }
 
 void displayOn(void) {
@@ -480,9 +500,11 @@ void initLED(void) {
 }
 
 void initAutoConnect(void) {
+    Serial.begin(115200);
     // Enable saved past credential by autoReconnect option,
     // even once it is disconnected.
     Config.autoReconnect = true;
+    Config.ota           = AC_OTA_BUILTIN;
     Portal.config(Config);
 
     // Load aux. page
@@ -499,10 +521,16 @@ void initAutoConnect(void) {
     // Behavior a root path of ESP8266WebServer.
     Server.on("/", rootPage);
     Server.on("/start", startPage);  // Set NTP server trigger handler
+    Server.on("/ota", otaPage);
 
     // Establish a connection with an autoReconnect option.
     if (Portal.begin()) {
         log_i("WiFi connected: %s", WiFi.localIP().toString().c_str());
+        if (MDNS.begin(HOSTNAME)) {
+            MDNS.addService("http", "tcp", HTTP_PORT);
+            log_i("HTTP Server ready! Open http://%s.local/ in your browser\n", HOSTNAME);
+        } else
+            log_e("Error setting up MDNS responder");
     }
 }
 
@@ -541,17 +569,17 @@ void loop(void) {
     button.loop();
     pir_sensor.loop();
 
-    if (motionTime) {
-        sendMotionTime(motionTime);
-        motionTime = 0;
-        delay(15 * 1000);
-    }
+    // if (motionTime) {
+    //     sendMotionTime(motionTime);
+    //     motionTime = 0;
+    //     delay(15 * 1000);
+    // }
 
-    if (sendData) {
-        sendThingSpeakData();
-        sendData = false;
-        delay(15 * 1000);
-    }
+    // if (sendData) {
+    //     sendThingSpeakData();
+    //     sendData = false;
+    //     delay(15 * 1000);
+    // }
 
     yield();
 }
