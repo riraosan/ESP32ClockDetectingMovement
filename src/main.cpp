@@ -26,7 +26,6 @@ SOFTWARE.
 #include <Arduino.h>
 #include <WebServer.h>
 #include <WiFi.h>
-typedef WebServer WiFiWebServer;
 #include <AutoConnect.h>
 #include <BME280Class.h>
 #include <Button2.h>
@@ -50,7 +49,7 @@ typedef WebServer WiFiWebServer;
 #define TIME_ZONE       "JST-9"
 #define NTP_SERVER1     "ntp.nict.jp"
 #define NTP_SERVER2     "ntp.jst.mfeed.ad.jp"
-#define NTP_SERVER3     ""
+#define NTP_SERVER3     "asia.pool.ntp.org"
 // 7segLED TM1637
 #define CLK             19
 #define DIO             22
@@ -551,7 +550,7 @@ void setup(void) {
     initPIRSensor();
     initTouchSensor();
     initThingSpeak();
-    initESPUI();
+    //initESPUI();
 
     led.drawpix(0, CRGB::Green);
 
@@ -569,17 +568,17 @@ void loop(void) {
     button.loop();
     pir_sensor.loop();
 
-    // if (motionTime) {
-    //     sendMotionTime(motionTime);
-    //     motionTime = 0;
-    //     delay(15 * 1000);
-    // }
+    if (motionTime) {
+        sendMotionTime(motionTime);
+        motionTime = 0;
+        delay(15 * 1000);
+    }
 
-    // if (sendData) {
-    //     sendThingSpeakData();
-    //     sendData = false;
-    //     delay(15 * 1000);
-    // }
+    if (sendData) {
+        sendThingSpeakData();
+        sendData = false;
+        delay(15 * 1000);
+    }
 
     yield();
 }
