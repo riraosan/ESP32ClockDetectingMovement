@@ -24,8 +24,6 @@ SOFTWARE.
 
 #define TS_ENABLE_SSL  // Don't forget it for ThingSpeak.h!!
 #include <Arduino.h>
-#include <WebServer.h>
-#include <WiFi.h>
 #include <AutoConnect.h>
 #include <BME280Class.h>
 #include <Button2.h>
@@ -35,6 +33,8 @@ SOFTWARE.
 #include <TM1637Display.h>
 #include <ThingSpeak.h>
 #include <Ticker.h>
+#include <WebServer.h>
+#include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <secrets.h>
 #include <timezone.h>
@@ -72,6 +72,9 @@ AutoConnectAux Timezone;
 
 Ticker clocker;
 Ticker sensorChecker;
+Ticker blockOFF;
+Ticker blockON;
+
 ESP32Touch touch;
 LED_DisPlay led;
 Button2 button     = Button2(BUTTON_PIN);
@@ -79,9 +82,11 @@ Button2 pir_sensor = Button2(PIR_SENSOR_PIN);
 TM1637Display display(CLK, DIO);
 WiFiClientSecure _client;
 
-bool sendData        = false;
-long motionTime      = 0;
+bool sendDataflag    = false;
+float motionTime     = 0;
 bool motionDetecting = false;
+bool blockflag       = true;
+bool sendMotionflag  = false;
 
 unsigned long myChannelNumber = SECRET_CH_ID;
 const char* myWriteAPIKey     = SECRET_WRITE_APIKEY;
@@ -228,7 +233,7 @@ void printPressureLED(float value) {
     display.showNumberDecEx(pressLed.toInt(), (0x80 >> 0), false);
 }
 
-void _checkSensor(void) { sendData = true; }
+void _checkSensor(void) { sendDataflag = true; }
 
 String getLEDTime(void) {
     time_t t      = time(NULL);
@@ -383,18 +388,18 @@ void pirDetected(Button2& btn) {
     log_d("--- detected.");
     motionDetecting = true;
 }
-
 void pirReleased(Button2& btn) {
-    motionTime = btn.wasPressedFor();
+    motionTime += btn.wasPressedFor();
     log_d("--- released: %d", motionTime);
     motionDetecting = false;
+    sendMotionflag  = true;
 }
 
 void initButton(void) { button.setReleasedHandler(released); }
 
 void initPIRSensor(void) {
-    pir_sensor.setReleasedHandler(pirReleased);
     pir_sensor.setPressedHandler(pirDetected);
+    pir_sensor.setReleasedHandler(pirReleased);
 }
 
 void fadeInDisplay(uint32_t ms) {
@@ -450,12 +455,17 @@ void sendThingSpeakData(void) {
     }
 }
 
-void sendMotionTime(long time) {
+void sendMotionTime(float time) {
     float min = time / 1000 / 60;
 
     ThingSpeak.setField(4, min);  // ms to min
 
-    sendThingSpeakData();
+    // write to the ThingSpeak channel
+    int code = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+    if (code == 200)
+        log_d("Channel update successful.");
+    else
+        log_d("Problem updating channel. HTTP error code %d", code);
 }
 
 void setNtpClockNetworkInfo(void) {
@@ -562,22 +572,37 @@ void setup(void) {
     clocker.attach_ms(500, displayClock);
 }
 
-//main task?
+void _off(void) {
+    log_i("blockflag is false.");
+    blockflag = false;
+}
+
+void _on(void) {
+    log_i("blockflag is true.");
+    blockflag = true;
+}
+
 void loop(void) {
     Portal.handleClient();
     button.loop();
     pir_sensor.loop();
 
-    if (motionTime) {
-        sendMotionTime(motionTime);
-        motionTime = 0;
-        delay(15 * 1000);
+    //every 60 seconds
+    if (sendDataflag) {
+        log_d("Clock send BME280 Data.");
+        sendThingSpeakData();
+        blockOFF.once(15, _off);
+        blockON.once(45, _on);
+
+        sendDataflag = false;
     }
 
-    if (sendData) {
-        sendThingSpeakData();
-        sendData = false;
-        delay(15 * 1000);
+    if (blockflag == false && sendMotionflag == true) {
+        log_i("Clock can send motion data.");
+        sendMotionTime(motionTime);
+
+        motionTime     = 0;
+        sendMotionflag = false;
     }
 
     yield();
