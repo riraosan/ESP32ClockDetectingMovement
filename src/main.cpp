@@ -544,32 +544,11 @@ void initAutoConnect(void) {
 }
 
 void setup(void) {
-    //initLED();
-    //led.drawpix(0, CRGB::Red);
-
-    //displayOn();
-
     initAutoConnect();
-
-    //displayOff();
-
     initBME280();
-
     initClock();
-    //initButton();
-    //initPIRSensor();
-    //initTouchSensor();
     initThingSpeak();
-    //initESPUI();
-
-    //led.drawpix(0, CRGB::Green);
-
-    //setNtpClockNetworkInfo();
     sendThingSpeakData();
-
-    //showEnvData();
-    //displayOn();
-    //clocker.attach_ms(500, displayClock);
 }
 
 void _off(void) {
