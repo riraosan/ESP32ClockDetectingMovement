@@ -43,8 +43,8 @@ SOFTWARE.
 // log
 #include <esp32-hal-log.h>
 // WiFi Connection
-#define HOSTNAME        "atom_clock"
-#define AP_NAME         "ATOM-G-AP"
+#define HOSTNAME        "LOLIN32"
+#define AP_NAME         "LOLIN32-G-AP"
 // NTP Clock
 #define TIME_ZONE       "JST-9"
 #define NTP_SERVER1     "ntp.nict.jp"
@@ -54,8 +54,8 @@ SOFTWARE.
 #define CLK             19
 #define DIO             22
 // BME280
-#define SDA             25
-#define SCL             21
+#define SDA             21
+#define SCL             22
 // WiFi reset
 #define BUTTON_PIN      39
 // PIR Detection
@@ -544,32 +544,32 @@ void initAutoConnect(void) {
 }
 
 void setup(void) {
-    initLED();
-    led.drawpix(0, CRGB::Red);
+    //initLED();
+    //led.drawpix(0, CRGB::Red);
 
-    displayOn();
+    //displayOn();
 
     initAutoConnect();
 
-    displayOff();
+    //displayOff();
 
     initBME280();
 
     initClock();
-    initButton();
-    initPIRSensor();
-    initTouchSensor();
+    //initButton();
+    //initPIRSensor();
+    //initTouchSensor();
     initThingSpeak();
     //initESPUI();
 
-    led.drawpix(0, CRGB::Green);
+    //led.drawpix(0, CRGB::Green);
 
-    setNtpClockNetworkInfo();
+    //setNtpClockNetworkInfo();
     sendThingSpeakData();
 
-    showEnvData();
-    displayOn();
-    clocker.attach_ms(500, displayClock);
+    //showEnvData();
+    //displayOn();
+    //clocker.attach_ms(500, displayClock);
 }
 
 void _off(void) {
@@ -584,8 +584,8 @@ void _on(void) {
 
 void loop(void) {
     Portal.handleClient();
-    button.loop();
-    pir_sensor.loop();
+    //button.loop();
+    //pir_sensor.loop();
 
     //every 60 seconds
     if (sendDataflag) {
@@ -597,13 +597,13 @@ void loop(void) {
         sendDataflag = false;
     }
 
-    if (blockflag == false && sendMotionflag == true) {
-        log_i("Clock can send motion data.");
-        sendMotionTime(motionTime);
+    // if (blockflag == false && sendMotionflag == true) {
+    //     log_i("Clock can send motion data.");
+    //     sendMotionTime(motionTime);
 
-        motionTime     = 0;
-        sendMotionflag = false;
-    }
+    //     motionTime     = 0;
+    //     sendMotionflag = false;
+    // }
 
     yield();
 }
