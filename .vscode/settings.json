@@ -35,5 +35,6 @@
     "[markdown]": {
       "editor.wordWrap": "off",
       "files.trimTrailingWhitespace": false,
-    }
+    },
+    "C_Cpp.clang_format_sortIncludes": false
 }
